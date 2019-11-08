@@ -53,6 +53,8 @@ or
 ./p3c -print-ast test/original.ppp
 ```
 
+will generate beautify.ast or original.ast in the `test/` folder.
+
 ---
 
 ## Maintainers
