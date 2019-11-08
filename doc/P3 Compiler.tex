@@ -1,0 +1,1770 @@
+\documentclass{article}
+\usepackage[rounded]{syntax}
+\usepackage{url}
+\usepackage{verbatim} %for add comment
+\usepackage{mathpartir}            % inference rules
+\usepackage{tabularx}
+\usepackage{color}
+
+
+\newcommand{\inferA}[3]{\inferrule*[Right=#1,rightskip=-10pt]{#2}{#3}}
+
+\newcommand{\inferB}[3]{\inferrule*[Right=#1,narrower=0.3, rightskip=5pt,leftskip=5pt]{#2}{#3}}
+
+\newcommand{\code}[1]{\textnormal{\texttt{#1}}}
+
+\newcommand{\sampledby}[1]{\code{smp}(#1)}  % use in math mode
+\newcommand{\dataC}{\code{data3}}
+
+
+\newcommand{\mapto}[3]{ #1 ( #2 ) = #3 } % for finite maps
+
+\newcommand{\VconformClockIO}[4]{ #1 \vdash #2 :: #3 [#4] }
+\newcommand{\conformClockIO}[3]{ \VconformClockIO{I}{#1}{#2}{#3} }
+
+
+\newcommand{\true}{\code{true}}
+\newcommand{\false}{\code{false}}
+
+\newcommand{\nth}[3]  { #1 [ #2 ] = #3 } % for lists
+
+\newcommand{\VnocycE}[2]      { #1 \vdash \varnothing\; #2 }
+
+\newcommand{\nocycE}[1]      { \VnocycE{P}{#1} }
+\newcommand{\lf}[1]  { \lfloor #1 \rfloor }
+
+
+
+
+\title{\bf Compiler for P3: A Language to Specify \\ Protocol-Independent Packet Parsers \\ \tt ($Draft$)}
+
+\author{ Compiler Group, System Software and Software Engineering Laboratory \\ Department of Computer Science and Technology, Tsinghua University }
+
+
+\begin{document}
+\maketitle
+
+\section{Introduction}
+
+$\cdots\cdots$
+
+\section{The source language : P3}
+
+\subsection{Syntax of P3}
+
+\begin{grammar} \small
+
+{\renewcommand\baselinestretch{0}\selectfont
+<parser\_spec>   ::= <protocol\_set> <layer\_set> \{ <decl> \}
+
+<protocol\_set>     ::=   \textbf{pset} '=' '\{' <id\_list> '\}'
+
+<layer\_set>     ::=   \textbf{lset} '=' '\{' <id\_list> '\}'
+
+<id\_list>     ::=   \emph{IDENT} \{ ',' \emph{IDENT} \}
+
+<decl>     ::=   <const\_decl>  \\
+     \hspace*{0.48cm} $\mid$  <type\_decl>  \\
+     \hspace*{0.48cm} $\mid$  <var\_decl>  \\
+     \hspace*{0.48cm} $\mid$  <register\_decl>  \\
+     \hspace*{0.48cm} $\mid$  <reg\_acc\_set>  \\
+     \hspace*{0.48cm} $\mid$  <protocol\_decl> \\
+     \hspace*{0.48cm} $\mid$  <layer\_action>
+
+\par}
+
+\end{grammar}
+
+\begin{grammar} \small
+
+{\renewcommand\baselinestretch{0}\selectfont
+<const\_decl>     ::=   \textbf{const}  \emph{IDENT} '=' <const> ';'    // <expr> must be a constant expression
+
+<const>     ::=   \emph{IDENT} ~~~~~~~~~~// constant identifiers  \\
+     \hspace*{0.65cm} $\mid$  \emph{Integer}~~~~~~~~~~//integer constants, signed 32 bits \\
+     \hspace*{0.65cm} $\mid$  \emph{Hexadecimal}~~//hex constants, such as 0x88a8, 0xFFFFFF, 0x89,0x103 \\
+     \hspace*{0.65cm} $\mid$  \emph{Bits}~~~~~~~~~~//binary constants, such as 001001, 100, 0, 1, 1100, 00, 11111
+\par}
+
+\end{grammar}
+
+\begin{grammar} \small
+
+{\renewcommand\baselinestretch{0}\selectfont
+
+<type\_decl>     ::=   \textbf{type}  \emph{IDENT} '=' <kind> ';'
+
+<kind>     ::=   \emph{IDENT}~~~~~~~~~~//type identifiers  \\
+     \hspace*{0.56cm} $\mid$  \textbf{int}~~~~~~~~~~//integer type, signed 32 bits \\
+     \hspace*{0.56cm} $\mid$  \textbf{hexes} '[' <const> ']'~ //hexadecimal type, with $n$ hexadecimal digits\\
+     \hspace*{0.56cm} $\mid$  \textbf{bits} '[' <const> ']'~~~~~~~~~~//binary type, with $n$  binary digits \\
+     \hspace*{0.5cm}where $n$ is the value of the <const> expression
+
+\par}
+
+\end{grammar}
+
+\begin{grammar} \small
+
+{\renewcommand\baselinestretch{0}\selectfont
+
+<var\_decl>     ::=  \textbf{var} \emph{IDENT} \{ ',' \emph{IDENT} \} ':' <kind>
+
+\par}
+
+\end{grammar}
+
+\begin{grammar} \small
+
+{\renewcommand\baselinestretch{0}\selectfont
+<protocol\_decl>   ::= \textbf{protocol} <protocol\_id>  '\{' <protocol> '\}'
+
+<protocol\_id>     ::=   \emph{IDENT}
+
+<protocol>   ::= <fields> [ <locals> ] <p\_stmts>
+
+<fields>   ::= \textbf{fields} '='  '\{' <field> \{ <field> \} [ <option\_field> ] '\}'
+
+<field>     ::=   \emph{IDENT} ':' <const> ';'
+
+<option\_field>     ::=   \emph{IDENT} ':' '*' ';'
+
+<p\_stmts>     ::=   \{ <p\_stmt>  \}
+
+<p\_stmt>     ::=   <if\_else\_p\_stmt> \\
+     \hspace*{0.95cm} $\mid$  \textbf{next\_header} '=' <protocol\_id> ';' \\
+     \hspace*{0.95cm} $\mid$  \textbf{length} '=' <const> ';' \\
+     \hspace*{0.95cm} $\mid$  \textbf{bypass} '=' <const> ';' \\
+     \hspace*{0.95cm} $\mid$  <action\_stmt>
+
+<if\_else\_p\_stmt>     ::=   \textbf{if} '(' <expr> ')' <p\_stmts> \{ \textbf{elseif} '(' <expr> ')' <p\_stmts> \}  \\
+     \hspace*{2.35cm} [ \textbf{else} <p\_stmts> ] \textbf{endif}
+
+\par}
+
+\end{grammar}
+
+\begin{grammar} \small
+
+{\renewcommand\baselinestretch{0}\selectfont
+<layer\_action>   ::= <layer\_id> '\{' [ <locals> ] <l\_decls>  <l\_actions> '\}'
+
+<layer\_id>     ::=   \emph{IDENT}
+
+<l\_decls>     ::=   \{ <l\_decl>  \}
+
+<l\_decl>     ::=   <local\_reg\_decl>  \\
+     \hspace*{0.8cm} $\mid$  \emph{IDENT} '=' <expr> ';' \\
+     \hspace*{0.8cm} $\mid$  <protocol\_id> <id\_list> ';'
+
+<local\_reg\_decl>     ::=    [ <cella\_regs> ]  [ <cellb0\_regs> ]  [ <cellb1\_regs> ] \\
+
+<cella\_regs>     ::=    \textbf{cellA} \textbf{Registers} '\{' \{ <reg\_acc\_set> \} '\}'
+
+<cellb0\_regs>     ::=    \textbf{cellB0} \textbf{Registers} '\{' \{ <reg\_acc\_set> \} '\}'
+
+<cellb1\_regs>     ::=    \textbf{cellB1} \textbf{Registers} '\{' \{ <reg\_acc\_set> \} '\}'
+
+<l\_actions>     ::=    [ <cella\_actions> ]  [ <cellb0\_actions> ]  [ <cellb1\_actions> ] \\
+
+<cella\_actions>     ::=    \textbf{cellA} '\{' \{ <l\_stmt> \} '\}'
+
+<cellb0\_actions>     ::=    \textbf{cellB0} '\{' \{ <l\_stmt> \} '\}'
+
+<cellb1\_actions>     ::=    \textbf{cellB1} '\{' \{ <l\_stmt> \} '\}'
+
+<l\_stmt>     ::=   <if\_else\_l\_stmt> \\
+     \hspace*{0.88cm} $\mid$  \textbf{bypass} '=' <const> ';' \\
+     \hspace*{0.88cm} $\mid$  <action\_stmt>
+
+<l\_stmts>     ::=   \{ <l\_stmt>  \}
+
+<if\_else\_l\_stmt>     ::=   \textbf{if} '(' <expr> ')' <l\_stmts> \{ \textbf{elseif} '(' <expr> ')' <l\_stmts> \} \\
+     \hspace*{2.25cm} [ \textbf{else} <l\_stmts> ] \textbf{endif}
+
+\par}
+
+{\renewcommand\baselinestretch{0}\selectfont
+<locals>     ::=   <var\_decl> \{ ';' <var\_decl> \}
+
+\par}
+
+{\renewcommand\baselinestretch{0}\selectfont
+<expr>     ::=   <atom> ~~~~~~~~~~//atom expressions  \\
+     \hspace*{0.6cm} $\mid$  <unop> <expr>~~~~~~~~~~//unary expressions \\
+     \hspace*{0.6cm} $\mid$  <expr> <binop> <expr>~~~~~~~~~~//binary expressions \\
+     \hspace*{0.6cm} $\mid$  <expr> '.' \emph{IDENT} ~~~~~~~~~~//access to a field in a protocol  \\
+     \hspace*{0.6cm} $\mid$  <expr> '[' <expr> ']' ~~~~~~~~~~//access to a bit of a field or register \\
+     \hspace*{0.6cm} $\mid$  <expr> '[' <expr> ':' <expr> ']' ~~~~~//access to a section of a field or register \\
+     \hspace*{0.6cm} $\mid$  '(' <expr> ')'
+
+<atom>     ::=   <const> ~~~~~~~~~~//const expressions  \\
+     \hspace*{0.6cm} $\mid$  \emph{IDENT}~~~~~~~~~~//all kinds of access name , ex., field or register access name 
+
+<unop>     ::=   \textbf{int} ~~~//convert hexadecimal or binary numbers to integers(signed 32 bits) \\
+     \hspace*{0.6cm} $\mid$  \textbf{not} ~~~~~~~~~~//logical negation \\
+     \hspace*{0.6cm} $\mid$  '$"~"$' ~~~~~~~~~~//bit-wise negation
+
+<binop>     ::=   '$"+"$' ~~~~~~~~~~//addition \\
+     \hspace*{0.7cm} $\mid$  '$"-"$' ~~~~~~~~~~//subtraction \\
+     \hspace*{0.7cm} $\mid$  '$"*"$' ~~~~~~~~~~//multiplication \\
+     \hspace*{0.7cm} $\mid$  '$"/"$' ~~~~~~~~~~//division integer \\
+     \hspace*{0.7cm} $\mid$  '$"%"$' ~~~~~~~~~~//remainder \\
+     \hspace*{0.7cm} $\mid$  '$"&&"$' ~~~~~~~~~~//logical and \\
+     \hspace*{0.7cm} $\mid$  '$"||"$'  ~~~~~~~~~~//logical or \\
+     \hspace*{0.7cm} $\mid$  '$"&"$' ~~~~~~~~~~//bit-wise and \\
+     \hspace*{0.7cm} $\mid$  '$"|"$'  ~~~~~~~~~~//bit-wise or \\
+     \hspace*{0.7cm} $\mid$  '$"^"$' ~~~~~~~~~~//bit-wise exclusive or \\
+     \hspace*{0.7cm} $\mid$  '$"=="$'  ~~~~~~~~~~//equality between any type of values \\
+     \hspace*{0.7cm} $\mid$  '$"<>"$' ~~~~~~~~~~//inequality between any type of values \\
+     \hspace*{0.7cm} $\mid$  '$"<"$' ~~~~~~~~~~//lower on numerics \\
+     \hspace*{0.7cm} $\mid$  '$">"$' ~~~~~~~~~~//greater on numerics \\
+     \hspace*{0.7cm} $\mid$  '$"<="$' ~~~~~~~~~~//lower or equal on numerics \\
+     \hspace*{0.7cm} $\mid$  '$">="$' ~~~~~~~~~~//greater or equal on numerics  \\
+     \hspace*{0.7cm} $\mid$  '$"<<"$' ~~~~~~~~~~//shift left   \\
+     \hspace*{0.7cm} $\mid$  '$">>"$' ~~~~~~~~~~//shift right   \\
+     \hspace*{0.7cm} $\mid$  '$"++"$' ~~~~~~~~~~//concatenation of 2 binary bits' or 2 hexadecimal digits'\\
+     \hspace*{0.7cm} $\mid$  \textbf{hexes} ~~~//convert a binary number or an integer to a hexadecimal number  \\
+     \hspace*{0.7cm} $\mid$  \textbf{bits} ~~~//convert an integer or a hexadecimal number to a binary number \\
+\par}
+
+{\renewcommand\baselinestretch{0}\selectfont
+<action\_stmt>     ::=    \textbf{action} `=' `\{' <instructions> `\}' \\
+     \hspace*{1.65cm} $\mid$  <instruction>
+
+<instructions>     ::=    \{ <instruction> \}
+
+<instruction>     ::=   <set> \\
+     \hspace*{1.455cm} $\mid$  <mov> \\
+     \hspace*{1.455cm} $\mid$  <lg> \\
+     \hspace*{1.455cm} $\mid$  <eq>
+
+<set>   ::= \textbf{set}  <reg\_acc\_name> `,' <expr> `;'
+
+<mov>   ::= \textbf{mov}  <src\_reg\_acc\_name> `,' <src\_reg\_acc\_name> `;'
+
+<lg>   ::= \textbf{lg}  <reg\_acc\_name> `,' <src\_reg\_acc\_name>  `,' <src\_reg\_acc\_name> `;'
+
+<eq>   ::= \textbf{eq}  <reg\_acc\_name> `,' <src\_reg\_acc\_name>  `,' <src\_reg\_acc\_name> `;'
+
+<src\_reg\_acc\_name>   ::= <reg\_acc\_name>  \\
+     \hspace*{2.6cm} $\mid$  <expr>
+
+\par}
+
+{\renewcommand\baselinestretch{0}\selectfont
+
+<register\_decl>     ::=   \textbf{register} <reg\_name> : <register\_size> ';'
+
+<register\_size>     ::=   <expr>
+
+<reg\_acc\_set>     ::=   <reg\_acc\_name>  '=' \emph{IDENT} '[' <expr> ':' <expr> ']' ';'  \\
+     \hspace*{1.66cm} $\mid$  <reg\_acc\_name>  '=' \emph{IDENT} '[' <expr> ']' ';'
+
+<reg\_acc\_name>     ::=   \emph{IDENT}   \\
+     \hspace*{2cm} $\mid$ \emph{IDENT} '[' <expr> ':' <expr> ']'  \\
+     \hspace*{2cm} $\mid$ \emph{IDENT} '[' <expr> ']'
+
+<reg\_name>     ::=   \emph{IDENT}
+
+\par}
+
+\end{grammar}
+
+\subsection{Semantics of P3}
+
+Informal interpretation of P3 semantics. $\cdots$ (Based on some simple example)
+
+\begin{flushleft} 
+$\cdots$ $\cdots$
+\end{flushleft} 
+
+\section{The target language}
+
+\subsection{Syntax of P3 assembly}
+
+\begin{grammar} \small
+
+{\renewcommand\baselinestretch{0}\selectfont
+<parser\_asm>   ::= \{ <layer\_block> \}
+
+<layer\_block>     ::=   <layer\_id> ':'   \\
+     \hspace*{1.78cm}    \{ <Pins> \}    \\
+     \hspace*{1.78cm}    <cella\_pb>    \\
+     \hspace*{1.78cm}    <cella\_pc\_cur>   \\
+     \hspace*{1.78cm}    <cella\_pc\_nxt>  \\
+     \hspace*{1.78cm}    <cellb0\_pb>   \\
+     \hspace*{1.78cm}    <cellb0\_pc\_cur>   \\
+     \hspace*{1.78cm}    <cellb1\_pb>    \\
+     \hspace*{1.78cm}    <cellb1\_pc\_cur>
+
+\par}
+
+\end{grammar}
+
+
+\begin{grammar} \small
+
+{\renewcommand\baselinestretch{0}\selectfont
+
+<layer\_id>     ::=   \emph{IDENT}
+
+<Pins>   ::=   `Pins' `(' <ins\_name> `,' <ins\_size> `)'
+
+<cella\_pb>     ::=   `Abegin' \{ <cella\_pb\_item> \} `Aend'
+
+<cella\_pc\_cur>     ::=   `ACbegin' \{ <cella\_pc\_cur\_item> \}  `ACend'
+
+<cella\_pc\_nxt>     ::=   `ANbegin' \{ <cella\_pc\_nxt\_item> \}  `ANend'
+
+<cellb0\_pb>     ::=   `B0begin' \{ <cellb0\_pb\_item> \}  `B0end'
+
+<cellb0\_pc\_cur>     ::=   `B0Cbegin' \{ <cellb0\_pc\_cur\_item> \}  `B0Cend'
+
+<cellb1\_pb>     ::=   `B1begin' \{ <cellb1\_pb\_item> \}  `B1end'
+
+<cellb1\_pc\_cur>     ::=   `B1Cbegin' \{ <cellb1\_pc\_cur\_item> \}  `B1Cend'
+
+\par}
+
+\end{grammar}
+
+
+\begin{grammar} \small
+
+{\renewcommand\baselinestretch{0}\selectfont
+
+<cella\_pb\_item>     ::=   <hdr\_id> `,' `\{' <cond>  \{ `,' <cond> \} `\}' `,' <sub\_id> `,' <nxt\_id> `,' <bypas>
+
+<cella\_pc\_cur\_item>     ::=   <sub\_id> `,' `\{' <cmd>  \{ `,' <cmd> \} `\}' `,' <lyr\_offset>
+
+<cella\_pc\_nxt\_item>     ::=   <nxt\_id> `,' `\{' <cella\_nxt> `\}' `,' `\{' <cellb0\_nxt> `\}' `,' `\{' <cellb1\_nxt> `\}'
+
+<cellb0\_pb\_item>     ::=   <hdr\_id> `,' `\{' <cond> \{ `,' <cond> \} `\}' `,' <sub\_id>
+
+<cellb0\_pc\_cur\_item>     ::=   <sub\_id> `,' `\{' <cmd> \{ `,' <cmd> \} `\}'
+
+<cellb1\_pb\_item>     ::=   <hdr\_id> `,' `\{' <cond>  \{ `,' <cond> \} `\}' `,' <sub\_id>
+
+<cellb1\_pc\_cur\_item>     ::=   <sub\_id> `,' `\{' <cmd> \{ `,' <cmd> \} `\}'
+
+\par}
+
+\end{grammar}
+
+
+\begin{grammar} \small
+
+{\renewcommand\baselinestretch{0}\selectfont
+
+<hdr\_id>     ::=   <num>
+
+<sub\_id>     ::=   <num>
+
+<nxt\_id>     ::=   <num>
+
+<bypas>     ::=   <num>
+
+<cella\_nxt>     ::= `(' \{ <irf\_offset> \} `)' `+' `(' \{ <prot\_offset> \} `)'
+
+<cellb0\_nxt>     ::= `(' \{ <irf\_offset> \} `)' `+' `(' \{ <prot\_offset> \} `)'
+
+<cellb1\_nxt>     ::= `(' \{ <irf\_offset> \} `)' `+' `(' \{ <prot\_offset> \} `)'
+
+<irf\_offset>     ::=   <num>
+
+<prot\_offset>     ::=   <num>
+
+<cond>     ::=   <reg\_seg> `==' <num>   \\
+     \hspace*{0.62cm} $\mid$  <ins\_seg> `==' <num>
+
+<cmd>     ::=   <set\_cmd> \\
+     \hspace*{0.55cm} $\mid$  <mov\_cmd> \\
+     \hspace*{0.55cm} $\mid$  <lg\_cmd> \\
+     \hspace*{0.55cm} $\mid$  <eq\_cmd>
+
+<set>   ::= `(' \textbf{set}  <reg\_seg> `,' <num> `)'
+
+<mov>   ::= `(' \textbf{mov}  <reg\_seg> `,' <src\_reg> `)'
+
+<lg>   ::= `(' \textbf{lg}  <reg\_seg> `,' <src\_reg> `,' <src\_reg> `)'
+
+<eq>   ::= `(' \textbf{eq}  <reg\_seg> `,' <src\_reg>  `,' <src\_reg> `)'
+
+<src\_reg>   ::= `(' <reg\_name> `,' <reg\_offset> `,' <reg\_size> `)'  \\
+     \hspace*{0.96cm} $\mid$  <num> \\
+
+<reg\_seg>   ::= `(' <reg\_name> `,' <reg\_offset> `,' <seg\_size> `)'
+
+<ins\_seg>   ::= `(' <ins\_name> `,' <ins\_offset> `,' <seg\_size> `)'
+
+<reg\_name>     ::=   \emph{IDENT}
+
+<reg\_offset>     ::=   <num>
+
+<reg\_size>     ::=   <num>
+
+<seg\_size>     ::=   <num>
+
+<ins\_size>     ::=   <num>
+
+<num>     ::=   \emph{Integer}~~~~~~~~~~//integer constants, signed 32 bits \\
+     \hspace*{0.65cm} $\mid$  \emph{Hexadecimal}~~//hex constants, such as 0x88a8, 0xFFFFFF, 0x89,0x103 \\
+
+\par}
+
+\end{grammar}
+
+
+\subsection{The configuration file format}
+
+
+\begin{grammar} \small
+
+{\renewcommand\baselinestretch{0}\selectfont
+
+<configuration>   ::= \{ <layer\_config> \}
+
+<layer\_con>     ::=   <layer\_id> ':' <pb\_lut>  <pc\_cur\_lut>  <pc\_nxt\_lut>
+
+
+<layer\_con>     ::=   <layer\_id> ':'   \\
+     \hspace*{1.58cm}    <cella\_pb\_con>    \\
+     \hspace*{1.58cm}    <cella\_pc\_cur\_con>   \\
+     \hspace*{1.58cm}    <cella\_pc\_nxt\_con>  \\
+     \hspace*{1.58cm}    <cellb0\_pb\_con>   \\
+     \hspace*{1.58cm}    <cellb0\_pc\_cur\_con>   \\
+     \hspace*{1.58cm}    <cellb1\_pb\_con>    \\
+     \hspace*{1.58cm}    <cellb1\_pc\_cur\_con>
+
+<layer\_id>     ::=   \emph{IDENT}
+
+<cella\_pb\_con>     ::=   "CellA PB"  \{ <cella\_pb\_con\_item> \}
+
+<cella\_pc\_cur\_con>     ::=   "CellA PC CUR"  \{ <cella\_pc\_cur\_con\_item> \}
+
+<cella\_pc\_nxt\_con>     ::=   "CellA PC NXT"  \{ <cella\_pc\_nxt\_con\_item> \}
+
+<cellb0\_pb\_con>     ::=   "CellB0 PB"  \{ <cellb0\_pb\_con\_item> \}
+
+<cellb0\_pc\_cur\_con>     ::=   "CellB0 PC CUR"  \{ <cellb0\_pc\_cur\_con\_item> \}
+
+<cellb1\_pb\_con>     ::=   "CellB1 PB"  \{ <cellb1\_pb\_con\_item> \}
+
+<cellb1\_pc\_cur\_con>     ::=   "CellB1 PC CUR"  \{ <cellb1\_pc\_cur\_con\_item> \}
+
+<cella\_pb\_con\_item>     ::=   $\cdots$
+
+<cella\_pc\_cur\_con\_item>     ::=   $\cdots$
+
+<cella\_pc\_nxt\_con\_item>     ::=   $\cdots$
+
+<cellb0\_pb\_con\_item>     ::=   $\cdots$
+
+<cellb0\_pc\_cur\_con\_item>     ::=   $\cdots$
+
+<cellb1\_pb\_con\_item>     ::=   $\cdots$
+
+<cellb1\_pc\_cur\_con\_item>     ::=   $\cdots$
+
+\par}
+
+\end{grammar}
+
+\subsection{Semantics}
+
+Informal interpretation of the semantics of the P3 assembly. $\cdots$ (Based on some simple example)
+
+\begin{flushleft}
+$\cdots$ $\cdots$
+\end{flushleft}
+
+
+\section{Parsing}
+
+\subsection{The P3 Abstract Syntax Tree}
+
+\begin{grammar} \small
+
+{\renewcommand\baselinestretch{0}\selectfont
+<parser\_spec>   ::= \textit{Parser} ( <protocol\_set>, <layer\_set>, \{ <decl> \} )
+
+<protocol\_set>     ::=  \textit{Pset} ( <id\_list> )
+
+<layer\_set>     ::=   \textit{Lset} ( <id\_list> )
+
+<id\_list>     ::=   \{ \emph{IDENT} \}
+
+<decl>     ::=   \textit{ConstDecl} ( <const\_decl> )  \\
+     \hspace*{0.6cm} $\mid$  \textit{TypeDecl} ( <type\_decl> )  \\
+     \hspace*{0.6cm} $\mid$  \textit{VarDecl} ( \{ <var\_decl> \} )  \\
+     \hspace*{0.6cm} $\mid$  \textit{RegisterDecl} ( <register\_decl> )  \\
+     \hspace*{0.6cm} $\mid$  \textit{RegAccSet} ( <reg\_acc\_set> )  \\
+     \hspace*{0.6cm} $\mid$  \textit{ProtocolDecl} ( <protocol\_decl> ) \\
+     \hspace*{0.6cm} $\mid$  \textit{LayerAction} ( <layer\_action> )
+
+\par}
+
+\end{grammar}
+
+\begin{grammar} \small
+
+{\renewcommand\baselinestretch{0}\selectfont
+<const\_decl>   ::=  \textit{ConstDcl}(\textit{IDENT}, <const>)
+
+<const>     ::=   \emph{IDENT} ~~~~~~~~~~// constant identifiers  \\
+     \hspace*{0.65cm} $\mid$  \textit{IntConst}( \emph{Integer} )~~~~~~~~~~//integer constants, signed 32 bits \\
+     \hspace*{0.65cm} $\mid$  \textit{HexConst}( \emph{Hexadecimal} )~~//hex constants, such as 0x88a8, 0xFFFFFF \\
+     \hspace*{0.65cm} $\mid$  \textit{BitSConst}( \emph{BITS} )~~~~~~~~~~//binary constants, such as 001001, 100, 0, 1
+
+\par}
+
+\end{grammar}
+
+\begin{grammar} \small
+
+{\renewcommand\baselinestretch{0}\selectfont
+
+<type\_decl>   ::=  \textit{TypeDcl}(\textit{IDENT}, <kind>)
+
+<kind>     ::=   \emph{IDENT}~~~~~~~~~~//type identifiers  \\
+     \hspace*{0.56cm} $\mid$  \textbf{int}~~~~~~~~~~//integer type, signed 32 bits \\
+     \hspace*{0.56cm} $\mid$  \textbf{hexes} ( <const> )~ //hexadecimal type, with $n$ hexadecimal digits\\
+     \hspace*{0.56cm} $\mid$  \textbf{bits} ( <const> )~~~~~~~~~~//binary type, with $n$  binary digits \\
+     \hspace*{0.5cm}where $n$ is the value of the <const> expression
+
+\par}
+
+\end{grammar}
+
+\begin{grammar} \small
+
+{\renewcommand\baselinestretch{0}\selectfont
+
+<var\_decl>     ::=   \textit{VarDcl}(\textit{IDENT}, <kind>)
+
+\par}
+
+\end{grammar}
+
+
+\begin{grammar} \small
+
+{\renewcommand\baselinestretch{0}\selectfont
+<protocol\_decl>   ::= \textit{ProtocolDecl} ( \emph{IDENT} , <protocol> )
+
+<protocol>   ::= \textit{Protocol} ( <fields> , <locals> , <p\_stmts> )
+
+<fields>   ::= ( \textit{Fields} ( <field> \{ <field> \}, \textit{OptionFields} ( [ <option\_field> ] ) )
+
+<field>     ::=   ( \textit{IDENT} , <const> )
+
+<option\_field>     ::=   ( \textit{IDENT} , 0 )
+
+
+<p\_stmts>     ::=   \{ <p\_stmt>  \}
+
+<p\_stmt>     ::=   <if\_else\_p\_stmt> \\
+     \hspace*{0.95cm} $\mid$  \textit{NextHeader} ( \emph{IDENT} ) \\
+     \hspace*{0.95cm} $\mid$  \textit{Length} ( <const> ) \\
+     \hspace*{0.95cm} $\mid$  \textit{Bypass} ( <const> ) \\
+     \hspace*{0.95cm} $\mid$  <action\_stmt>
+
+<if\_else\_p\_stmt>     ::=   \textit{IfElseP}( \{ <if\_branch\_p> \} , <default\_branch\_p> )
+
+<if\_branch\_p>     ::=   ( <expr>, <p\_stmts> )
+
+<default\_branch\_p>     ::= [ <p\_stmts> ]
+
+\par}
+
+\end{grammar}
+
+\begin{grammar} \small
+
+{\renewcommand\baselinestretch{0}\selectfont
+<layer\_action>   ::= \textit{LayerAction} ( \emph{IDENT}, <locals> , <l\_decls> , <l\_actions> )
+
+<l\_decls>     ::=   <local\_reg\_decl> \{ <l\_decl>  \}
+
+<l\_decl>     ::=   \textit{Assignment} ( \emph{IDENT} , <expr> ) \\
+     \hspace*{0.8cm} $\mid$  \textit{ProtocolDef} ( \emph{IDENT} , <id\_list> )
+
+<local\_reg\_decl>     ::=  \textit{LocalRegs} ( <cella\_regs>, <cellb0\_regs>, <cellb1\_regs> )
+
+<cella\_regs>     ::=    \textit{CellARegs} ( \{ <reg\_acc\_set> \} )
+
+<cellb0\_regs>     ::=   \textit{CellB0Regs} ( \{ <reg\_acc\_set> \} )
+
+<cellb1\_regs>     ::=   \textit{CellB1Regs} ( \{ <reg\_acc\_set> \} )
+
+<l\_actions>     ::=   \textit{LocalActions} ( <cella\_actions>, <cellb0\_actions>, <cellb1\_actions> ) \\
+
+<cella\_actions>     ::=    \textit{CellA} ( \{ <l\_stmt> \} )
+
+<cellb0\_actions>     ::=    \textit{CellB0} ( \{ <l\_stmt> \} )
+
+<cellb1\_actions>     ::=    \textit{CellB1} ( \{ <l\_stmt> \} )
+
+<l\_stmt>     ::=   <if\_else\_l\_stmt> \\
+     \hspace*{0.88cm} $\mid$  \textit{Bypass} ( <const> ) \\
+     \hspace*{0.88cm} $\mid$  <action\_stmt>
+
+<l\_stmts>     ::=   \{ <l\_stmt>  \}
+
+<if\_else\_l\_stmt>     ::=   \textit{IfElseL} ( \{ <if\_branch\_l>  \} , <default\_branch\_l> )
+
+<if\_branch\_l>     ::=   ( <expr>, <l\_stmts> )
+
+<default\_branch\_l>     ::=  [ <l\_stmts> ]
+
+\par}
+
+
+{\renewcommand\baselinestretch{0}\selectfont
+
+<locals>   ::=  \{ <var\_decl> \}
+
+
+\par}
+
+
+{\renewcommand\baselinestretch{0}\selectfont
+
+<expr>     ::=   \textit{Eatom}(<atom>)  \\
+     \hspace*{0.6cm} $\mid$  \textit{Eunop}(<unop>, <expr>)~~~~~(* unary operation *)\\
+     \hspace*{0.6cm} $\mid$  \textit{Ebinop}(<binop>, <expr>, <expr>)~~~~~(* binary operation *) \\
+     \hspace*{0.6cm} $\mid$  \textit{Efield}(<expr>, \emph{IDENT})~~~~~(* access to a field in a protocol *) \\
+     \hspace*{0.6cm} $\mid$  \textit{EFieldBit}(<expr>, <expr>)~~~~~(* access to a bit of a field or register  *) \\
+     \hspace*{0.6cm} $\mid$  \textit{EFieldSection}(<expr>, <expr>, <expr>)   \\
+     \hspace*{3cm} (* access to a section of a field or register  *)
+
+<atom>     ::=   \textit{Econst}(<const>) ~~~~~~~~~~//const expressions  \\
+     \hspace*{0.6cm} $\mid$  \emph{IDENT}~~~~~~~~~~//all kinds of access name , ex., field or register access name 
+
+<unop>     ::=   \textit{Oint} ~~~//convert hexadecimal or binary numbers to integers \\
+     \hspace*{0.6cm} $\mid$  \textit{Onot} ~~~~~~~~~~//logical negation \\
+     \hspace*{0.6cm} $\mid$  \textit{Oneg} ~~~~~~~~~~//bit-wise negation
+
+<binop>     ::=   \textit{Oadd} ~~~~~~~~~~// addition '$"+"$' \\
+     \hspace*{0.7cm} $\mid$  \textit{Osub} ~~~~~~~~~~// subtraction '$"-"$' \\
+     \hspace*{0.7cm} $\mid$  \textit{Omul} ~~~~~~~~~~// multiplication '$"*"$' \\
+     \hspace*{0.7cm} $\mid$  \textit{Odivint} ~~~~~~~~~~// division integer '$"/"$' \\
+     \hspace*{0.7cm} $\mid$  \textit{Omod} ~~~~~~~~~~// remainder '$"%"$' \\
+     \hspace*{0.7cm} $\mid$  \textit{Oand} ~~~~~~~~~~//logical and '$"&&"$' \\
+     \hspace*{0.7cm} $\mid$  \textit{Oor}  ~~~~~~~~~~//logical or '$"||"$' \\
+     \hspace*{0.7cm} $\mid$  \textit{Oband} ~~~~~~~~~~//bit-wise and '$"&"$' \\
+     \hspace*{0.7cm} $\mid$  \textit{Obor}  ~~~~~~~~~~//bit-wise or '$"|"$' \\
+     \hspace*{0.7cm} $\mid$  \textit{Obeor} ~~~~~~~~~~//bit-wise exclusive or '$"^"$' \\
+     \hspace*{0.7cm} $\mid$  \textit{Oeq} ~~~~~~~~~~// comparison ([$"="$])  \\
+     \hspace*{0.7cm} $\mid$  \textit{One} ~~~~~~~~~~// comparison ([$"<>"$])  \\
+     \hspace*{0.7cm} $\mid$  \textit{Olt} ~~~~~~~~~~// comparison ([$"<"$])  \\
+     \hspace*{0.7cm} $\mid$  \textit{Ogt} ~~~~~~~~~~// comparison ([$">"$])  \\
+     \hspace*{0.7cm} $\mid$  \textit{Ole} ~~~~~~~~~~// comparison ([$"<="$])  \\
+     \hspace*{0.7cm} $\mid$  \textit{Oge} ~~~~~~~~~~// comparison ([$">="$]) \\
+     \hspace*{0.7cm} $\mid$  \textit{Osl} ~~~~~~~~~~//shift left '$"<<"$'  \\
+     \hspace*{0.7cm} $\mid$  \textit{Osr} ~~~~~~~~~~//shift right '$">>"$'  \\
+     \hspace*{0.7cm} $\mid$  \textit{Obc} ~~~~~~~~~~//bits' concatenation '$"++"$'  \\
+     \hspace*{0.7cm} $\mid$  \textit{Ohexes} ~//convert a binary number or an integer to a hexadecimal number  \\
+     \hspace*{0.7cm} $\mid$  \textit{Obits} ~~~//convert an integer or a hexadecimal number to a binary number
+
+\par}
+
+
+{\renewcommand\baselinestretch{0}\selectfont
+<action\_stmt>     ::=    \textit{Action}( <instructions> )
+
+<instructions>     ::=    \{ <instruction> \}
+
+<instruction>     ::=   \textit{Set} (<reg\_acc\_name>, <expr>) \\
+     \hspace*{1.455cm} $\mid$  \textit{Mov} (<src\_reg\_acc\_name>, <src\_reg\_acc\_name>) \\
+     \hspace*{1.455cm} $\mid$  \textit{Lg} (<reg\_acc\_name>, <src\_reg\_acc\_name>, <src\_reg\_acc\_name>) \\
+     \hspace*{1.455cm} $\mid$  \textit{Eq} (<reg\_acc\_name>, <src\_reg\_acc\_name>, <src\_reg\_acc\_name>)
+
+<src\_reg\_acc\_name>   ::= <reg\_acc\_name>  \\
+     \hspace*{2.6cm} $\mid$  <expr>
+
+\par}
+
+{\renewcommand\baselinestretch{0}\selectfont
+
+<register\_decl>     ::=   \textit{Register}( \emph{IDENT} , <expr> )
+
+<reg\_acc\_set>     ::=    \textit{RegAcc}( \emph{IDENT} , \emph{IDENT} , <expr> , <expr> )  \\
+     \hspace*{1.66cm} $\mid$  \textit{RegAcc}( \emph{IDENT} , \emph{IDENT} , <expr> )
+
+<reg\_acc\_name>     ::=   \textit{RegAccName}( \emph{IDENT} )   \\
+     \hspace*{2cm} $\mid$ \textit{RegAccName}( \emph{IDENT} , <expr> , <expr> )    \\
+     \hspace*{2cm} $\mid$ \textit{RegAccName}( \emph{IDENT} , <expr> )
+
+
+\par}
+
+\end{grammar}
+
+
+\subsection{Implementation and Verification} \label{Parser Implementation and Verification}
+
+Construct a formally verified parser based on J.-H. Jourdan's method. $\cdots$
+
+\begin{flushleft}
+$\cdots$ $\cdots$
+\end{flushleft}
+
+
+\section{Type Checking}
+
+// Will be revised later, except Section 5.1.1.
+
+\subsection{Type system for P3}
+
+\subsubsection{Type expressions}
+
+
+A basic type expression can be defined by the syntax
+shown as follows.
+
+    \small
+
+        \begin{tabularx}{1.0\linewidth}{rm{1em}m{10em}m{18em}ll}
+          $<$\textit{type}$>$    & ::= &  \textit{Int} & integer type,  signed integer up to 32 bits \\
+                     & \hspace*{0.3cm} $\mid$ &  \textit{Hexes}($n$) & hexadecimal type, with $n$ hexadecimal digits \\
+                     & \hspace*{0.3cm} $\mid$ &  \textit{Bits}($n$) &binary type, with $n$  binary digits  \\
+                     & \hspace*{0.3cm} $\mid$ &  \textit{RegField}($n$) & register or protocol field type, sized with $n>0$  \\
+                     & \hspace*{0.3cm} $\mid$ &  \textit{X} & type to specify that any instance of the protocol named $X$ has a type $X$  \\
+                     & \hspace*{0.3cm} $\mid$ &  \textit{RegFieldAcc}(\textit{id}, $i$, $j$) & register or protocol field access type, $0\leq i \leq j < k$, and \textit{id} has a \textit{RegField}($k$) type
+		\end{tabularx}
+        \normalsize
+
+For a constant expression, we need to compute its value for the validity checking in many places. Hence, we add an associate value to form an additional basic type, shown as follows.
+
+    \small
+
+        \begin{tabularx}{1.0\linewidth}{rm{1em}m{6em}m{22em}ll}
+          $<$\textit{type}$>$    & ::= &  ($\tau$, $i$) & a integer constant type, with the type $\tau$ and the integer value $i$, a signed integer up to 32 bits
+		\end{tabularx}
+        \normalsize
+
+
+\subsubsection{Typing environment}
+
+A typing environment associates type expressions to variables and has the form
+
+ \begin{center}
+ $\mathcal{E}$ ::= [ $x_{1}$ : $A_{1}$, $A_{2}$ : $A_{2}$, ..., $x_{n}$ : $A_{n}$ ]
+\end{center}
+\begin{flushleft}
+where $x_{i}$ $\neq$ $x_{j}$ for all $i$ and $j$ , satisfying $i$ $\neq$ $j$ and ($1\leq i, j \leq n$).
+\end{flushleft}
+
+We use $\mathcal{C}$, $\mathcal{T}$, $\mathcal{G}$, $\mathcal{L}$  and $\mathcal{P}$ to denote a global const identifiers' typing environment, a global type identifiers' typing environment, the global typing environment, a local typing environment for a layer, and a local typing environment for a protocol respectively. We use $\mathcal{L}_{A}$, $\mathcal{L}_{B0}$ and $\mathcal{L}_{B1}$ to denote a particular local typing environment specific to the Cell A, Cell B0, and Cell B1 contexts in the current layer environment $\mathcal{L}$. In some cases, we use $\mathcal{P}_{id}$ to denote a particular local typing environment specific to the context of a protocol identified by \textit{id}.
+
+Besides, to provide more confident consistency, we define a protocol set and a layer set syntactically. Accordingly, we introduce special global environments $\mathcal{P}$\textit{set} and $\mathcal{L}$\textit{set}.
+
+\subsubsection{Judgements}
+
+\begin{itemize}
+  \item $\mathcal{E}$ $\vdash$ $e$ : $A$ , ~~~~~implies that, \\
+  ~~~~~~~~~~under the the well-formed typing environment $\mathcal{E}$, the expression $e$ is well-typed and has the type $A$. Here, $\mathcal{E}$ can be $\phi$, $\mathcal{C}$, $\mathcal{T}$, $\mathcal{P}$\textit{set}, or $\mathcal{L}$\textit{set}.
+  \item $\mathcal{E}$ $\vdash$ $\diamond$ , means that $\mathcal{E}$ is a well-formed typing environment. Here, $\mathcal{E}$ can be $\phi$, $\mathcal{P}$\textit{set}, $\mathcal{L}$\textit{set}, $\mathcal{C}$, $\mathcal{T}$, $\mathcal{G}$, $\mathcal{L}$, $\mathcal{P}$, $\mathcal{L}_{A}$, $\mathcal{L}_{B0}$ or $\mathcal{L}_{B1}$. 
+  \item $\mathcal{C}$, $\mathcal{T}$ $\vdash$ $e$ : $A$ , ~~~~~implies that, \\
+  ~~~~~~~~~~under the well-formed typing environments $\mathcal{C}$ and $\mathcal{T}$, the expression $e$ is well-typed and has the type $A$.
+  \item $\mathcal{C}$, $\mathcal{T}$, $\mathcal{G}$ $\vdash$ $e$ : $A$ , ~~~~~implies that, \\
+  ~~~~~~~~~~under the well-formed typing environments $\mathcal{C}$, $\mathcal{T}$ and $\mathcal{G}$, the expression $e$ is well-typed and has the type $A$.
+  \item $\mathcal{P}$\textit{set}, $\mathcal{L}$\textit{set}, $\mathcal{C}$, $\mathcal{T}$, $\mathcal{G}$ $\vdash$ $e$ : $A$ , ~~~~~implies that, \\
+  ~~~~~~~~~~under the protocol set $\mathcal{P}$\textit{set}, the layer set $\mathcal{L}$\textit{set} and the well-formed typing environments $\mathcal{C}$, $\mathcal{T}$ and $\mathcal{G}$, the expression $e$ is well-typed and has the type $A$.
+  \item $\mathcal{P}$\textit{set}, $\mathcal{L}$\textit{set}, $\mathcal{C}$, $\mathcal{T}$, $\mathcal{G}$, $\mathcal{L}$ $\vdash$ $e$ : $A$ , ~~~~~implies that, \\
+  ~~~~~~~~~~under the protocol set $\mathcal{P}$\textit{set}, the layer set $\mathcal{L}$\textit{set} and the well-formed typing environments $\mathcal{C}$, $\mathcal{T}$, $\mathcal{G}$ and $\mathcal{L}$, the expression $e$ is well-typed and has the type $A$.
+  \item $\mathcal{P}$\textit{set}, $\mathcal{L}$\textit{set}, $\mathcal{C}$, $\mathcal{T}$, $\mathcal{G}$, $\mathcal{L}$, $\mathcal{L_{C}}$  $\vdash$ $e$ : $A$ , ~~~~~implies that, \\
+  ~~~~~~~~~~under the protocol set $\mathcal{P}$\textit{set}, the layer set $\mathcal{L}$\textit{set} and the well-formed typing environments $\mathcal{C}$, $\mathcal{T}$, $\mathcal{G}$, $\mathcal{L}$ and $\mathcal{L_{C}}$ ($\mathcal{L}_{A}$, $\mathcal{L}_{B0}$ or $\mathcal{L}_{B1}$), the expression $e$ is well-typed and has the type $A$.
+  \item $\mathcal{P}$\textit{set}, $\mathcal{L}$\textit{set}, $\mathcal{C}$, $\mathcal{T}$, $\mathcal{G}$, $\mathcal{L}$, $\mathcal{L}_{A}$, $\mathcal{P}$ $\vdash$ $e$ : $A$ , ~~~~~implies that, \\
+  ~~~~~~~~~~under the protocol set $\mathcal{P}$\textit{set}, the layer set $\mathcal{L}$\textit{set} and the well-formed typing environments $\mathcal{C}$, $\mathcal{T}$, $\mathcal{G}$, $\mathcal{L}$, $\mathcal{L}_{A}$ and $\mathcal{P}$, the expression $e$ is well-typed and has the type $A$.
+  \item $\mathcal{S}$ $\vdash$ $D$ , ~~~~~implies that, \\
+  ~~~~~~~~~~under the protocol set or the layer set, the parser component $D$ is well-typed. Here, $\mathcal{S}$ can be $\mathcal{P}$\textit{set} or $\mathcal{L}$\textit{set}.
+%  \item $\mathcal{P}$\textit{set}, $\mathcal{L}$\textit{set} $\vdash$ $D$ , ~~~~~implies that, \\
+%  ~~~~~~~~~~under the protocol set $\mathcal{P}$\textit{set} and the layer set $\mathcal{L}$\textit{set}, the parser component $D$ is well-typed.
+\item $\mathcal{P}$\textit{set}, $\mathcal{L}$\textit{set}, $\mathcal{C}$, $\mathcal{T}$, $\mathcal{G}$ $\vdash$ $D$ , ~~~~~implies that \\
+  ~~~~~~~~~~under the protocol set $\mathcal{P}$\textit{set}, the layer set $\mathcal{L}$\textit{set} and the well-formed typing environments $\mathcal{C}$, $\mathcal{T}$ and $\mathcal{G}$, the parser component $D$ is well-typed.
+  \item $\mathcal{P}$\textit{set}, $\mathcal{L}$\textit{set}, $\mathcal{C}$, $\mathcal{T}$, $\mathcal{G}$, $\mathcal{L}$ $\vdash$ $D$ , ~~~~~implies that \\
+  ~~~~~~~~~~under the protocol set $\mathcal{P}$\textit{set}, the layer set $\mathcal{L}$\textit{set} and the well-formed typing environments $\mathcal{C}$, $\mathcal{T}$, $\mathcal{G}$ and $\mathcal{L}$, the parser component $D$ is well-typed.
+  \item $\mathcal{P}$\textit{set}, $\mathcal{L}$\textit{set}, $\mathcal{C}$, $\mathcal{T}$, $\mathcal{G}$, $\mathcal{L}$, $\mathcal{L_{C}}$ $\vdash$ $D$ , ~~~~~implies that \\
+  ~~~~~~~~~~under the protocol set $\mathcal{P}$\textit{set}, the layer set $\mathcal{L}$\textit{set} and the well-formed typing environments $\mathcal{C}$, $\mathcal{T}$, $\mathcal{G}$, $\mathcal{L}$ and $\mathcal{L_{C}}$ ($\mathcal{L}_{A}$, $\mathcal{L}_{B0}$ or $\mathcal{L}_{B1}$), the parser component $D$ is well-typed.
+  \item $\mathcal{P}$\textit{set}, $\mathcal{L}$\textit{set}, $\mathcal{C}$, $\mathcal{T}$, $\mathcal{G}$, $\mathcal{L}$, $\mathcal{L}_{A}$, $\mathcal{P}$ $\vdash$ $D$ , ~~~~~implies that \\
+  ~~~~~~~~~~under the protocol set $\mathcal{P}$\textit{set}, the layer set $\mathcal{L}$\textit{set} and the well-formed typing environments $\mathcal{C}$, $\mathcal{T}$, $\mathcal{G}$, $\mathcal{L}$, $\mathcal{L}_{A}$ and $\mathcal{P}$, the parser component $D$ is well-typed.
+  \end{itemize}
+
+
+\subsubsection{Typing rules}
+
+\begin{itemize}
+  \item Common
+
+\begin{mathpar}
+
+    \inferA {(C-1)}
+    { }
+    { \phi \vdash \diamond }
+
+    \and\inferA {(C-2)}
+    { \mathcal{E} \vdash \diamond \\ x:A \in \mathcal{E} }
+    { \mathcal{E} \vdash x:A }
+
+    \and\inferA {(C-3)}
+    { \mathcal{E'} \vdash \diamond  \\
+      x \notin dom(\mathcal{E'}) \\
+      \mathcal{E} = \mathcal{E'} \cup \{ x:A \}
+    }
+    { \mathcal{E} \vdash \diamond }
+
+    \and\inferA {(C-4)}
+    { \mathcal{E'} \vdash e:A  \\
+      y \notin dom(\mathcal{E'}) \\
+      \mathcal{E} = \mathcal{E'} \cup \{ y:A' \}
+    }
+    { \mathcal{E} \vdash e:A }
+\end{mathpar}
+
+\begin{mathpar}
+    \inferA {(C-5)}
+    { \mathcal{C} \vdash \diamond \\
+      \mathcal{T} \vdash t:\tau  \\
+    }
+    { \mathcal{C}, \mathcal{T} \vdash t:\tau }
+\end{mathpar}
+
+\begin{mathpar}
+    \inferA {(C-6)}
+    { \mathcal{C} \vdash \diamond \\ \mathcal{T} \vdash \diamond \\ \mathcal{G} \vdash e:A
+    }
+    { \mathcal{C}, \mathcal{T}, \mathcal{G} \vdash e:A }
+
+    \and\inferA {(C-7)}
+    { \mathcal{P}\textit{set} \vdash \diamond \\ \mathcal{L}\textit{set} \vdash \diamond \\ 
+      \mathcal{C}, \mathcal{T}, \mathcal{G} \vdash e:A \\
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G} \vdash e:A  }
+\end{mathpar}
+\begin{comment}
+\begin{mathpar}
+    \inferA {(C-8)}
+    { \mathcal{C} \vdash \diamond \\ \mathcal{T} \vdash \diamond \\ \mathcal{G} \vdash \diamond \\ \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{L} \vdash e:A
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L} \vdash e:A }
+
+    \and\inferA {(C-9)}
+    { \mathcal{C} \vdash \diamond \\ \mathcal{T} \vdash \diamond \\ \mathcal{G} \vdash \diamond \\ \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{L} \vdash D
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L} \vdash D }
+
+    \and\inferA {(C-10)}
+    { \mathcal{C} \vdash \diamond \\ \mathcal{T} \vdash \diamond \\ \mathcal{G} \vdash \diamond \\ \mathcal{L} \vdash \diamond \\ \mathcal{P} \vdash e:A
+    }
+    { \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{P} \vdash e:A }
+
+    \and\inferA {(C-11)}
+    { \mathcal{C} \vdash \diamond \\ \mathcal{T} \vdash \diamond \\ \mathcal{G} \vdash \diamond \\ \mathcal{L} \vdash \diamond  \\ \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{P} \vdash D
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{P} \vdash D }
+
+    \and\inferA {(C-12)}
+    { \mathcal{P}\textit{set} \vdash \diamond \\ \mathcal{L}\textit{set} \vdash \diamond \\
+      \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L} \vdash e:A
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L} \vdash e:A }
+
+    \and\inferA {(C-13)}
+    { \mathcal{P}\textit{set} \vdash \diamond \\ \mathcal{L}\textit{set} \vdash \diamond \\
+      \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{P} \vdash e:A
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{P} \vdash e:A }
+
+\end{mathpar}
+\end{comment}
+
+  \item Initialization of the protocol set and the layer set, opened at the beginning of the specification and not to be closed
+
+\begin{mathpar}
+
+    \inferA {(IPL-1)}
+    { \mathcal{P}\textit{set} = \{ id_{1}, \cdots, id_{k} \} \\ \forall i, j ( 1\leq i, j \leq k \rightarrow id_{i} \neq id_{j} ) }
+    { \mathcal{P}\textit{set} \vdash \textit{Pset}(id_{1}, \cdots, id_{k}) }
+
+    \and\inferA {(IPL-2)}
+    { \mathcal{L}\textit{set} = \{ id_{1}, \cdots, id_{k} \} \\ \forall i, j ( 1\leq i, j \leq k \rightarrow id_{i} \neq id_{j} ) }
+    { \mathcal{L}\textit{set} \vdash \textit{Lset}(id_{1}, \cdots, id_{k}) }
+
+\end{mathpar}
+
+
+\begin{mathpar}
+
+    \inferA {(IPL-3)}
+    { \mathcal{P}\textit{set} = \{ id_{1}, \cdots, id_{k} \} \\ \forall i, j ( 1\leq i, j \leq k \rightarrow id_{i} \neq id_{j} ) }
+    { \mathcal{P}\textit{set} \vdash \diamond }
+
+    \and\inferA {(IPL-4)}
+    { \mathcal{L}\textit{set} = \{ id_{1}, \cdots, id_{k} \} \\ \forall i, j ( 1\leq i, j \leq k \rightarrow id_{i} \neq id_{j} ) }
+    { \mathcal{L}\textit{set} \vdash \diamond }
+
+\end{mathpar}
+
+
+  \item Initialization of $\mathcal{C}$, opened at the beginning of the specification and not to be closed
+
+\begin{mathpar}
+
+    \inferA {(IC-1)}
+    { \mathcal{C'} \vdash c : (\tau, n)   \\
+      id \notin \textit{dom}(\mathcal{C'}) \\
+      \mathcal{C} = \mathcal{C'} \cup \{ id:(\tau, n) \}
+    }
+    { \mathcal{C} \vdash \textit{ConstDcl}(id, c) }
+    
+\end{mathpar}
+
+\begin{mathpar}
+    \inferA {(IC-2)}
+    { \textit{val}(i)~\textit{is}~a~\textit{signed}~\textit{integer}~\textit{up}~\textit{to}~32~\textit{bits} }
+    { \phi \vdash \textit{IntConst}( i )  : (\textit{Int}, \textit{val}(i)) }
+
+    \and\inferA {(IC-3)}
+    { \textit{val}(i)~\textit{is}~the~decimal~result~from~ a~\textit{hexadecimal}~\textit{number}~i~(\textit{with}~n(\leq 8)~\textit{hexadecimal}~\textit{digits}) }
+    { \phi \vdash \textit{HexConst}( i )  : (\textit{Hexes}($n$), \textit{val}(i)) }
+
+    \and\inferA {(IC-4)}
+    { \textit{val}(\textit{bs})~\textit{is}~the~non~\textit{negtive}~\textit{integer}~from~ a ~\textit{binary}~\textit{bit}~\textit{string}~\textit{bs}~\textit{with}~\textit{the}~\textit{length}~n(\leq 32)  }
+    { \phi \vdash \textit{BitSConst}( \textit{bs}) : (\textit{Bits}(n), \textit{val}(\textit{bs}) }
+
+\end{mathpar}
+
+  \item Initialization of $\mathcal{T}$, opened at the beginning of the specification and not to be closed
+
+\begin{mathpar}
+
+    \inferA {(IT-1)}
+    { \mathcal{T'} \vdash k : \tau    \\
+      id \notin \textit{dom}(\mathcal{T'}) \\
+      \mathcal{T} = \mathcal{T'} \cup \{ id:\tau \}
+    }
+    { \mathcal{T} \vdash \textit{TypeDcl}(id, k) }
+\end{mathpar}
+
+
+\begin{mathpar}
+    \inferA {(IT-2)}
+    { }
+    { \phi \vdash \textbf{int} : \textit{Int} }
+
+    \and\inferA {(IT-3)}
+    { \phi \vdash c : (\tau, n) }
+    { \phi \vdash \textbf{hexes} ( c ) : \textit{Hexes}($n$) }
+
+    \and\inferA {(IT-4)}
+    { \mathcal{C} \vdash c : (\tau, n) }
+    { \mathcal{C}, \phi \vdash \textbf{bits} ( c ) : \textit{Bits}(n) }
+
+\end{mathpar}
+
+  \item Initialization of $\mathcal{G}$, opened at the beginning of the specification and not to be closed
+
+\begin{mathpar}
+
+    \inferA {(IG-1)}
+    { \mathcal{C}, \mathcal{T}, \mathcal{G'} \vdash k : \tau   \\
+      id \notin \textit{dom}(\mathcal{G'}\cup \mathcal{C}) \\
+      \mathcal{G} = \mathcal{G'} \cup \{ id: \tau \}
+    }
+    { \mathcal{C}, \mathcal{T}, \mathcal{G} \vdash \textit{VarDcl}(id, k) }
+\end{mathpar}
+
+\begin{mathpar}
+
+    \inferA {(IG-2)}
+    { \mathcal{C}, \mathcal{T}, \mathcal{G'} \vdash e : (\textit{Int}, n)   \\
+      n>0   \\
+      id \notin \textit{dom}(\mathcal{G'}) \\
+      \mathcal{G} = \mathcal{G'} \cup \{ id: \textit{RegField}(n) \}
+    }
+    { \mathcal{C}, \mathcal{T}, \mathcal{G} \vdash \textit{Register}( id, e ) }
+
+    \and\inferA {(IG-3)}
+    { \mathcal{C}, \mathcal{T}, \mathcal{G'} \vdash e_1 : (\textit{Int}, n_1)   \\
+      \mathcal{C}, \mathcal{T}, \mathcal{G'} \vdash e_2 : (\textit{Int}, n_2)   \\
+      \mathcal{C}, \mathcal{T}, \mathcal{G'} \vdash \textit{rid} : \textit{RegField}(n)   \\
+      0\leq n_1 \leq n_2 < n \\
+      id \notin \textit{dom}(\mathcal{G'}) \\
+      \mathcal{G} = \mathcal{G'} \cup \{ id: \textit{RegFieldAcc}(\textit{rid}, n_1, n_2) \}
+    }
+    { \mathcal{C}, \mathcal{T}, \mathcal{G} \vdash \textit{RegAcc}( id, \textit{rid}, e_1 , e_2 )  }
+
+    \and\inferA {(IG-4)}
+    { \mathcal{C}, \mathcal{T}, \mathcal{G'} \vdash e : (\textit{Int}, k)   \\
+      \mathcal{C}, \mathcal{T}, \mathcal{G'} \vdash \textit{rid} : \textit{RegField}(n)   \\
+      0\leq k < n  \\
+      id \notin \textit{dom}(\mathcal{G'}) \\
+      \mathcal{G} = \mathcal{G'} \cup \{ id: \textit{RegFieldAcc}(\textit{rid}, k, k) \}
+    }
+    { \mathcal{C}, \mathcal{T}, \mathcal{G} \vdash \textit{RegAcc}( id, \textit{rid}, e )  }
+
+\end{mathpar}
+
+
+  \item Initialization of $\mathcal{L}$, opened at the beginning and closed at the end of a LayerAction specification
+
+\begin{mathpar}
+
+    \inferA {(IL-1)}
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L'} \vdash k : \tau   \\
+      id \notin \textit{dom}(\mathcal{L'}) \\
+      \mathcal{L} = \mathcal{L'} \cup \{ id: \tau \}
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L} \vdash \textit{VarDcl}(id, k) }
+\end{mathpar}
+
+\begin{mathpar}
+
+    \inferA {(IL-2)}
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L} \vdash e : (\tau, n)   \\
+      \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L} \vdash id : \tau   \\
+      \mathcal{L} = (\mathcal{L} \cup \{ id : (\tau, n) \} - \{ id : \tau \}
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L} \vdash \textit{Assignment}(id, e) }
+\end{mathpar}
+
+\begin{mathpar}
+
+    \inferA {(IL-3)}
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G} \vdash \textit{ProtocolDecl} ( \textit{pid} , \textit{protocol} )   \\
+    \mathcal{L'} \vdash \diamond  \\
+      id_{i} \notin \textit{dom}(\mathcal{L'}), 1\leq i\leq k \\
+      \mathcal{L} = \mathcal{L'} \cup \{ id_{i}: \textit{pid} \mid 1\leq i\leq k \}
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L} \vdash \textit{ProtocolDef} ( \textit{pid}, (id_{1}, \cdots, id_{k}) ) }
+
+\end{mathpar}
+
+
+  \item Initialization of $\mathcal{L_{A}}$ at the CellA Registers specification, opened at the beginning and closed at the end of a Cell A specification
+
+\begin{mathpar}
+
+    \inferA {(ILA-1)}
+    { 
+      \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L_{A}}' \vdash e_1 : (\textit{Int}, n_1)   \\
+      \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L} \vdash e_2 : (\textit{Int}, n_2)   \\
+      \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G} \vdash \textit{rid} : \textit{Reg}(n)   \\
+      0\leq n_1 \leq n_2 < n \\
+      id \notin \textit{dom}(\mathcal{L_{A}}') \\
+      \mathcal{L_{A}} = \mathcal{L_{A}}'  \cup \{ id: \textit{RegFieldAcc}(\textit{rid}, n_1, n_2) \}
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L_{A}} \vdash \textit{RegAcc}( id, \textit{rid}, e_1 , e_2 )   }
+
+    \and\inferA {(ILA-2)}
+    { 
+      \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L_{A}}' \vdash e : (\textit{Int}, k)   \\
+      \\mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G} \vdash \textit{rid} : \textit{RegField}(n)   \\
+      0\leq k < n  \\
+      id \notin \textit{dom}(\mathcal{L_{A}}') \\
+      \mathcal{L_{A}} = \mathcal{L_{A}}'  \cup \{ id: \textit{RegFieldAcc}(\textit{rid}, n_1, n_2) \}
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L_{A}} \vdash \textit{RegAcc}( id, \textit{rid}, e )  }
+
+\end{mathpar}
+
+
+  \item Initialization of $\mathcal{L}_{B0}$ at the CellB0 Registers specification, opened at the beginning and closed at the end of a Cell B0 specification
+
+\begin{mathpar}
+
+    \inferA {(ILB0-1)}
+    {
+      \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{B0}' \vdash e_1 : (\textit{Int}, n_1)   \\
+      \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L} \vdash e_2 : (\textit{Int}, n_2)   \\
+      \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G} \vdash \textit{rid} : \textit{Reg}(n)   \\
+      0\leq n_1 \leq n_2 < n \\
+      id \notin \textit{dom}(\mathcal{L}_{B0}') \\
+      \mathcal{L}_{B0} = \mathcal{L}_{B0}'  \cup \{ id: \textit{RegFieldAcc}(\textit{rid}, n_1, n_2) \}
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{B0} \vdash \textit{RegAcc}( id, \textit{rid}, e_1 , e_2 )   }
+
+    \and\inferA {(ILB0-2)}
+    {
+      \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{B0}' \vdash e : (\textit{Int}, k)   \\
+      \\mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G} \vdash \textit{rid} : \textit{RegField}(n)   \\
+      0\leq k < n  \\
+      id \notin \textit{dom}(\mathcal{L}_{B0}') \\
+      \mathcal{L}_{B0} = \mathcal{L}_{B0}'  \cup \{ id: \textit{RegFieldAcc}(\textit{rid}, n_1, n_2) \}
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{B0} \vdash \textit{RegAcc}( id, \textit{rid}, e )  }
+
+\end{mathpar}
+
+
+  \item Initialization of $\mathcal{L}_{B1}$ at the CellB0 Registers specification, opened at the beginning and closed at the end of a Cell B1 specification
+
+\begin{mathpar}
+
+    \inferA {(ILB0-1)}
+    {
+      \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{B1}' \vdash e_1 : (\textit{Int}, n_1)   \\
+      \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L} \vdash e_2 : (\textit{Int}, n_2)   \\
+      \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G} \vdash \textit{rid} : \textit{Reg}(n)   \\
+      0\leq n_1 \leq n_2 < n \\
+      id \notin \textit{dom}(\mathcal{L}_{B1}') \\
+      \mathcal{L}_{B1} = \mathcal{L}_{B1}'  \cup \{ id: \textit{RegFieldAcc}(\textit{rid}, n_1, n_2) \}
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{B1} \vdash \textit{RegAcc}( id, \textit{rid}, e_1 , e_2 )   }
+
+    \and\inferA {(ILB0-2)}
+    {
+      \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{B1}' \vdash e : (\textit{Int}, k)   \\
+      \\mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G} \vdash \textit{rid} : \textit{RegField}(n)   \\
+      0\leq k < n  \\
+      id \notin \textit{dom}(\mathcal{L}_{B1}') \\
+      \mathcal{L}_{B1} = \mathcal{L}_{B1}'  \cup \{ id: \textit{RegFieldAcc}(\textit{rid}, n_1, n_2) \}
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{B1} \vdash \textit{RegAcc}( id, \textit{rid}, e )  }
+
+\end{mathpar}
+
+
+  \item Initialization of $\mathcal{P}$, opened at each time of the instantialization of a Protocol specification and closed at the end of that instantialization.
+
+\begin{mathpar}
+
+    \inferA {(IP-1)}
+    { \textit{flds} = ( (\textit{fld}_1: c_1), \cdots,  (\textit{fld}_k: c_k) )  \\
+      \textit{oflds} = ( (\textit{ofld}_1: 0), \cdots,  (\textit{fld}_m: 0) )  \\
+      \forall i, j ( 1\leq i \leq k \rightarrow c_{i} > 0 ) \\
+      \forall i, j ( 1\leq i, j \leq k \rightarrow \textit{fld}_{i} \neq \textit{fld}_{j} ) \\
+      \forall i, j ( 1\leq i, j \leq m \rightarrow \textit{ofld}_{i} \neq \textit{ofld}_{j} ) \\
+      \forall i, j ( 1\leq i\leq k \wedge 1\leq j\leq m \rightarrow \textit{fld}_{i} \neq \textit{ofld}_{j} ) \\
+      \mathcal{P}\textit{set} \vdash \diamond \\ \mathcal{L}\textit{set} \vdash \diamond \\  \mathcal{C} \vdash \diamond \\ \mathcal{T} \vdash \diamond \\ \mathcal{G} \vdash \diamond \\ \mathcal{L} \vdash \diamond \\ \mathcal{L_{A}} \vdash \diamond \\  \mathcal{P'} \vdash \diamond \\
+      \forall i ( 1\leq i\leq k \rightarrow \textit{fld}_{i} \notin \textit{dom}(\mathcal{P'}) ) \\
+      \forall i ( 1\leq i\leq m \rightarrow \textit{ofld}_{i} \notin \textit{dom}(\mathcal{P'}) ) \\
+      \mathcal{P} = \mathcal{P'} \cup \{ \textit{fld}_{i}:(\textit{Int},c_{i}) \mid 1\leq i\leq k \} \cup \{ \textit{ofld}_{i}:\textit{Int} \mid 1\leq i\leq m \}
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L_{A}}, \mathcal{P} \vdash ( \textit{Fields} ( \textit{flds} ), \textit{OptionFields} ( \textit{oflds} )) }
+\end{mathpar}
+
+\begin{mathpar}
+
+    \inferA {(IP-2)}
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L_{A}}, \mathcal{P'} \vdash k : \tau   \\
+      id \notin \textit{dom}(\mathcal{P'}) \\
+      \mathcal{P} = \mathcal{P'} \cup \{ id: \tau \}
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L_{A}}, \mathcal{P} \vdash \textit{VarDcl}(id, k) }
+\end{mathpar}
+
+  \item Expressions
+
+\begin{mathpar}
+
+    \inferA {CE-1}
+    { \mathcal{C} \vdash c:(\tau,n)  \\
+      \mathcal{P}\textit{set} \vdash \diamond \\ \mathcal{L}\textit{set} \vdash \diamond \\  \mathcal{T} \vdash \diamond  \\ \mathcal{G} \vdash \diamond  \\ \mathcal{L} \vdash \diamond  \\ \mathcal{L}_{C} \vdash \diamond ~where~  \mathcal{L}_{C}~is~ \mathcal{L}_{A},\mathcal{L}_{B0}~or~\mathcal{L}_{B1} \\
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash \textit{Econst}(c):(\tau,n) }
+
+    \and\inferA {CE-2}
+    { \mathcal{C} \vdash c:(\tau,n)  \\
+      \mathcal{P}\textit{set} \vdash \diamond \\ \mathcal{L}\textit{set} \vdash \diamond \\  \mathcal{T} \vdash \diamond  \\ \mathcal{G} \vdash \diamond  \\ \mathcal{L} \vdash \diamond \\ \mathcal{L}_{A} \vdash \diamond \\ \mathcal{P} \vdash \diamond  \\
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash \textit{Econst}(c):(\tau,n) }
+
+\end{mathpar}
+
+
+\begin{mathpar}
+
+    \inferA {Oint-1}
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash e:(\tau,m) \\
+      n = \textit{trans\_to\_int}(\tau,m) \\ \mathcal{L}_{C}~is~ \mathcal{L}_{A},\mathcal{L}_{B0}~or~\mathcal{L}_{B1} 
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash \textit{Eunop}(\textit{Oint}, e) : (\textit{Int},n) }
+
+    \and\inferA {Oint-2}
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash e:(\tau,m) \\
+      n = \textit{trans\_to\_int}(\tau,m) \\ 
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash \textit{Eunop}(\textit{Oint}, e) : (\textit{Int},n) }
+
+\end{mathpar}
+
+
+\begin{mathpar}
+
+    \inferA {Onot-1}
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash e:Bool \\  \mathcal{L}_{C}~is~ \mathcal{L}_{A},\mathcal{L}_{B0}~or~\mathcal{L}_{B1}
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash \textit{Eunop}(\textit{Onot}, e) : Bool }
+
+    \and\inferA {Onot-2}
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash  e:Bool \\
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash \textit{Eunop}(\textit{Onot}, e) : Bool }
+
+\end{mathpar}
+
+\begin{mathpar}
+
+    \inferA {Oneg-1}
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash e:(\textit{Bits}(n), \textit{bs}) \\
+      \textit{bs'} = \textit{bit\_wise\_negation}(\textit{bs}) \\ \mathcal{L}_{C}~is~ \mathcal{L}_{A},\mathcal{L}_{B0}~or~\mathcal{L}_{B1}
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash \textit{Eunop}(\textit{Oneg}, e) : (\textit{Bits}(n), \textit{bs}') }
+
+    \and\inferA {Oneg-2}
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash  e:(\textit{Bits}(n), \textit{bs}) \\
+      \textit{bs'} = \textit{bit\_wise\_negation}(\textit{bs}) \\
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash \textit{Eunop}(\textit{Oneg}, e) : (\textit{Bits}(n), \textit{bs}') }
+
+\end{mathpar}
+
+\begin{mathpar}
+
+    \inferA {BopA-1}
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash e_1:(\tau_1,m_1) \\
+      \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash e_2:(\tau_2,m_2) \\
+      \textit{binop} \in \{ \textit{Oadd}, \textit{Osub}, \textit{Omul}, \textit{Odivint}, \textit{Omod} \} \\
+      n = \textit{do\_binop}(\textit{trans\_to\_int}(\tau_1,m_1), \textit{trans\_to\_int}(\tau_2,m_2)) \\ \mathcal{L}_{C}~is~ \mathcal{L}_{A},\mathcal{L}_{B0}~or~\mathcal{L}_{B1}
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash \textit{Ebinop}(\textit{binop}, e_1, e_2) : (\textit{Int},n) }
+
+    \and\inferA {BopA-2}
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash e_1:(\tau_1,m_1) \\
+      \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash e_2:(\tau_2,m_2) \\
+      \textit{binop} \in \{ \textit{Oadd}, \textit{Osub}, \textit{Omul}, \textit{Odivint}, \textit{Omod} \} \\
+      n = \textit{do\_binop}(\textit{trans\_to\_int}(\tau_1,m_1), \textit{trans\_to\_int}(\tau_2,m_2)) \\
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash \textit{Ebinop}(\textit{binop}, e_1, e_2) : (\textit{Int},n) }
+
+\end{mathpar}
+
+\begin{mathpar}
+
+    \inferA {BopL-1}
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash e_1:Bool \\
+      \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash e_2:Bool \\
+      \textit{binop} \in \{ \textit{Oand}, \textit{Oor} \} \\ \mathcal{L}_{C}~is~ \mathcal{L}_{A},\mathcal{L}_{B0}~or~\mathcal{L}_{B1}
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash \textit{Ebinop}(\textit{binop}, e_1, e_2) : Bool }
+
+    \and\inferA {BopL-2}
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash e_1:Bool \\
+      \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash e_2:Bool \\
+      \textit{binop} \in \{ \textit{Oand}, \textit{Oor} \} \\
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash \textit{Ebinop}(\textit{binop}, e_1, e_2) : Bool }
+
+\end{mathpar}
+
+\begin{mathpar}
+
+    \inferA {BopB-1}
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash e_1:(\textit{Bits}(n), \textit{bs}_1) \\
+      \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash e_2:(\textit{Bits}(n), \textit{bs}_2) \\
+      \textit{binop} \in \{ \textit{Oband}, \textit{Obor}, \textit{Obeor} \} \\
+      \textit{bs} = \textit{bit\_wise\_operation}(\textit{binop}, \textit{bs}_1, \textit{bs}_2) \\ \mathcal{L}_{C}~is~ \mathcal{L}_{A},\mathcal{L}_{B0}~or~\mathcal{L}_{B1}
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash \textit{Ebinop}(\textit{binop}, e_1, e_2) : (\textit{Bits}(n), \textit{bs}) }
+
+    \and\inferA {BopB-2}
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash  e_1:(\textit{Bits}(n), \textit{bs}_1) \\
+      \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash e_2:(\textit{Bits}(n), \textit{bs}_2) \\
+      \textit{binop} \in \{ \textit{Oband}, \textit{Obor}, \textit{Obeor} \} \\
+      \textit{bs} = \textit{bit\_wise\_operation}(\textit{binop}, \textit{bs}_1, \textit{bs}_2) \\
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash \textit{Ebinop}(\textit{binop}, e_1, e_2) : (\textit{Bits}(n), \textit{bs}) }
+
+\end{mathpar}
+
+\begin{mathpar}
+
+    \inferA {BopR-1}
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash e_1:\tau \\
+      \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash e_2:\tau \\
+      \textit{binop} \in \{ \textit{Oeq}, \textit{One}, \textit{Olt}, \textit{Ogt}, \textit{Ole}, \textit{Oge} \}  \\ \mathcal{L}_{C}~is~ \mathcal{L}_{A},\mathcal{L}_{B0}~or~\mathcal{L}_{B1}
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash \textit{Ebinop}(\textit{binop}, e_1, e_2) : Bool }
+
+    \and\inferA {BopR-2}
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash e_1:\tau \\
+      \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash e_2:\tau \\
+      \textit{binop} \in \{ \textit{Oeq}, \textit{One}, \textit{Olt}, \textit{Ogt}, \textit{Ole}, \textit{Oge} \} \\
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash \textit{Ebinop}(\textit{binop}, e_1, e_2) : Bool }
+
+\end{mathpar}
+
+
+\begin{mathpar}
+
+    \inferA {BopS-1}
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash e_1:\tau \\
+      \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash e_2:Int \\
+      \textit{binop} \in \{ \textit{Osl}, \textit{Osr} \}  \\ \mathcal{L}_{C}~is~ \mathcal{L}_{A},\mathcal{L}_{B0}~or~\mathcal{L}_{B1}
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash \textit{Ebinop}(\textit{binop}, e_1, e_2) : \tau }
+
+    \and\inferA {BopS-2}
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash e_1:\tau \\
+      \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash e_2:Int \\
+      \textit{binop} \in \{ \textit{Osl}, \textit{Osr} \} \\
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash \textit{Ebinop}(\textit{binop}, e_1, e_2) : \tau }
+
+\end{mathpar}
+
+\begin{mathpar}
+
+    \inferA {BopC-1}
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash e_1:\textit{Bits}(n_1) \\
+      \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash e_2:\textit{Bits}(n_2) \\
+      n = n_1 + n_2 \\ \mathcal{L}_{C}~is~ \mathcal{L}_{A},\mathcal{L}_{B0}~or~\mathcal{L}_{B1}
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash \textit{Ebinop}(\textit{Obc}, e_1, e_2) : \textit{Bits}(n) }
+
+    \and\inferA {BopC-2}
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash e_1:\textit{Bits}(n_1) \\
+      \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash e_2:\textit{Bits}(n_2) \\ n = n_1 + n_2 \\
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash \textit{Ebinop}(\textit{Obc}, e_1, e_2) : \textit{Bits}(n) }
+
+\end{mathpar}
+
+\begin{mathpar}
+
+    \inferA {BopH-1}
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash e_1:(\tau,m) \\
+    \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash e_2:(Int,n) \\
+      n > \textit{num\_of\_digits}(trans\_to\_hex(\tau,m)) \\ \mathcal{L}_{C}~is~ \mathcal{L}_{A},\mathcal{L}_{B0}~or~\mathcal{L}_{B1}
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash \textit{Ebinop}(\textit{Ohexes}, e_1, e_2) : \textit{Hexes}(n) }
+
+    \and\inferA {BopH-2}
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash e_1:(\tau,m) \\
+      \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash e_2:(Int,n) \\
+      n > \textit{num\_of\_digits}(trans\_to\_hex(\tau,m)) \\
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash \textit{Ebinop}(\textit{Ohexes}, e_1, e_2) : \textit{Hexes}(n) }
+
+\end{mathpar}
+
+\begin{mathpar}
+
+    \inferA {BopBT-1}
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash e_1:(\tau,m) \\
+    \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash e_2:(Int,n) \\
+      n > num\_of\_bits(\textit{trans\_to\_binary_number}(\tau,m)) \\ \mathcal{L}_{C}~is~ \mathcal{L}_{A},\mathcal{L}_{B0}~or~\mathcal{L}_{B1}
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash \textit{Ebinop}(\textit{Obits}, e_1, e_2) : \textit{Bits}(n) }
+
+    \and\inferA {BopBT-2}
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash e_1:(\tau,m) \\
+      \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash e_2:(Int,n) \\
+       n > num\_of\_bits(\textit{trans\_to\_binary_number}(\tau,m)) \\
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash \textit{Ebinop}(\textit{Obits}, e_1, e_2) : \textit{Bits}(n) }
+
+\end{mathpar}
+
+\begin{mathpar}
+
+    \inferA {Efield}
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash \textit{ProtocolDef} ( \textit{pid}, (id_{1}, \cdots, id_{k}) ) \\
+      e~is~\textit{pid} \\  \textit{id} \in \{id_{1}, \cdots, id_{k}\}  \\
+      \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash ( \textit{Fields} ( \textit{flds} ), \textit{OptionFields} ( \textit{oflds} )) \\
+      (\textit{id}: c) \in \textit{flds} \vee (\textit{id}: c) \in \textit{oflds} \\ \phi \vdash c : (Int, n) \\ \mathcal{L}_{C}~is~ \mathcal{L}_{A},\mathcal{L}_{B0}~or~\mathcal{L}_{B1}
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash \textit{Efield}(e, \textit{id}) : \textit{RegField}(n) }
+
+\end{mathpar}
+
+\begin{mathpar}
+
+    \inferA {FB-1}
+    {\mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash e_1:\textit{RegField}(n) \\
+      \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash e_2:(Int, n') \\
+      0\leq n' \leq n - 1 \\ \mathcal{L}_{C}~is~ \mathcal{L}_{A},\mathcal{L}_{B0}~or~\mathcal{L}_{B1} 
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash \textit{EFieldBit}(e_1, e_2) : \textit{Bits}(1) }
+
+    \and\inferA {FB-2}
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash e_1:\textit{RegField}(n) \\
+      \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash \vdash e_2:(Int, n') \\
+      0\leq n' \leq n - 1 \\
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash \textit{EFieldBit}(e_1, e_2) : \textit{Bits}(1) }
+
+\end{mathpar}
+
+
+\begin{mathpar}
+
+    \inferA {FS-1}
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash e_1:\textit{RegField}(n)  \\
+      \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash e_2:(Int, n') \\
+      \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash e_3:(Int, n'') \\
+      0\leq n' \leq n'' \leq n - 1 \\ m = n'' - n' + 1  \\ \mathcal{L}_{C}~is~ \mathcal{L}_{A},\mathcal{L}_{B0}~or~\mathcal{L}_{B1} 
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash \textit{EFieldSection}(e_1, e_2, e_3) : \textit{Bits}(m) }
+
+    \and\inferA {FS-2}
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash e_1:\textit{RegField}(n)  \\
+      \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P}  \vdash e_2:(Int, n') \\
+      \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P}  \vdash e_3:(Int, n'') \\
+      0\leq n' \leq n'' \leq n - 1 \\ m = n'' - n' + 1 \\
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash \textit{EFieldSection}(e_1, e_2, e_3) : \textit{Bits}(m) }
+
+\end{mathpar}
+
+  \item Instructions
+
+\begin{mathpar}
+
+    \inferA {Set-1}
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash  \textit{ra}: \textit{RegAcc}(\textit{rid}, n_1, n_2) \\
+      \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash e : (\tau,m) \\
+      \textit{trans\_to\_bits\_type}(\tau,m)= (\textit{Bits}(n), m) \\  n = n_1 - n_2 +1  \\ \mathcal{L}_{C}~is~ \mathcal{L}_{A},\mathcal{L}_{B0}~or~\mathcal{L}_{B1}
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash \textit{Set} (\textit{ra}, e) }
+
+    \and\inferA {Set-2}
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P}  \vdash  \textit{ra}: \textit{RegFieldAcc}(\textit{rid}, n_1, n_2) \\
+      \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P}  \vdash e : (\tau,m) \\
+      \textit{trans\_to\_bits}(\tau,m)= (\textit{Bits}(n), m) \\  n = n_1 - n_2 +1  \\
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P}  \vdash \textit{Set} (\textit{ra}, e) }
+
+\end{mathpar}
+
+\begin{mathpar}
+
+    \inferA {Mov-1}
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash  \textit{sra}: \tau \\ \tau = \textit{RegFieldAcc}(\textit{rid}, n_1, n_2) \vee \tau = \textit{Bits}(n)  \\ m = n_1 - n_2 +1 \vee m = n  \\
+      \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash  \textit{sra}': \tau' \\ \tau' = \textit{RegFieldAcc}(\textit{rid}', n_1', n_2') \vee \tau' = \textit{Bits}(n')  \\ m' = n_1' - n_2' +1 \vee m' = n'
+      \\ m=m' \\ \mathcal{L}_{C}~is~ \mathcal{L}_{A},\mathcal{L}_{B0}~or~\mathcal{L}_{B1}
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash \textit{Mov} (\textit{sra}, \textit{sra}') }
+
+    \and\inferA {Mov-2}
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P}\vdash  \textit{sra}: \tau \\ \tau = \textit{RegFieldAcc}(\textit{rid}, n_1, n_2) \vee \tau = \textit{Bits}(n)  \\ m = n_1 - n_2 +1 \vee m = n  \\
+      \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P}\vdash  \textit{sra}': \tau' \\ \tau' = \textit{RegFieldAcc}(\textit{rid}', n_1', n_2') \vee \tau' = \textit{Bits}(n')  \\ m' = n_1' - n_2' +1 \vee m' = n'
+      \\ m=m'
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P}\vdash \textit{Mov} (\textit{sra}, \textit{sra}') }
+
+\end{mathpar}
+
+
+\begin{mathpar}
+
+    \inferA {Eq-1}
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash  \textit{ra}: \textit{RegAcc}(\textit{rid}, k_1, k_2) \\
+\mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash  \textit{sra}: \tau \\ \tau = \textit{RegFieldAcc}(\textit{rid}, n_1, n_2) \vee \tau = \textit{Bits}(n)  \\ m = n_1 - n_2 +1 \vee m = n  \\
+      \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash  \textit{sra}': \tau' \\ \tau' = \textit{RegFieldAcc}(\textit{rid}', n_1', n_2') \vee \tau' = \textit{Bits}(n')  \\ m' = n_1' - n_2' +1 \vee m' = n'
+      \\ m=m'  \\
+      \mathcal{L}_{C}~is~ \mathcal{L}_{A},\mathcal{L}_{B0}~or~\mathcal{L}_{B1}
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash \textit{Eq} (\textit{ra}, \textit{sra}, \textit{sra}') }
+
+    \and\inferA {Eq-2}
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash  \textit{ra}: \textit{RegAcc}(\textit{rid}, n_1, n_2) \\
+\mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash  \textit{sra}: \tau \\ \tau = \textit{RegFieldAcc}(\textit{rid}, n_1, n_2) \vee \tau = \textit{Bits}(n)  \\ m = n_1 - n_2 +1 \vee m = n  \\
+      \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash  \textit{sra}': \tau' \\ \tau' = \textit{RegFieldAcc}(\textit{rid}', n_1', n_2') \vee \tau' = \textit{Bits}(n')  \\ m' = n_1' - n_2' +1 \vee m' = n'
+      \\ m=m'
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash \textit{Eq} (\textit{ra}, \textit{sra}, \textit{sra}') }
+
+\end{mathpar}
+
+\begin{mathpar}
+
+    \inferA {Lg-1}
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash  \textit{ra}: \textit{RegAcc}(\textit{rid}, k_1, k_2) \\
+\mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash  \textit{sra}: \tau \\ \tau = \textit{RegFieldAcc}(\textit{rid}, n_1, n_2) \vee \tau = \textit{Bits}(n)  \\ m = n_1 - n_2 +1 \vee m = n  \\
+      \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash  \textit{sra}': \tau' \\ \tau' = \textit{RegFieldAcc}(\textit{rid}', n_1', n_2') \vee \tau' = \textit{Bits}(n')  \\ m' = n_1' - n_2' +1 \vee m' = n'
+      \\ m=m' \\
+      \mathcal{L}_{C}~is~ \mathcal{L}_{A},\mathcal{L}_{B0}~or~\mathcal{L}_{B1}
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash \textit{Lg} (\textit{ra}, \textit{sra}, \textit{sra}') }
+
+    \and\inferA {Lg-2}
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash  \textit{ra}: \textit{RegAcc}(\textit{rid}, n_1, n_2) \\
+\mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P}\vdash  \textit{sra}: \tau \\ \tau = \textit{RegFieldAcc}(\textit{rid}, n_1, n_2) \vee \tau = \textit{Bits}(n)  \\ m = n_1 - n_2 +1 \vee m = n   \\
+      \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P}\vdash  \textit{sra}': \tau' \\ \tau' = \textit{RegFieldAcc}(\textit{rid}', n_1', n_2') \vee \tau' = \textit{Bits}(n')  \\ m' = n_1' - n_2' +1 \vee m' = n'
+      \\ m=m'
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash \textit{Lg} (\textit{ra}, \textit{sra}, \textit{sra}') }
+
+\end{mathpar}
+
+
+
+  \item Action statement
+
+\begin{mathpar}
+
+    \inferA {AS-1}
+    { \forall i: 1\leq i \leq k. \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash \textit{ins}_i \\ \mathcal{L}_{C}~is~ \mathcal{L}_{A},\mathcal{L}_{B0}~or~\mathcal{L}_{B1}
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash \textit{Action}( \textit{ins}_1, \cdots, \textit{ins}_k) }
+
+    \and\inferA {AS-2}
+    { \forall i: 1\leq i \leq k. \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash \textit{ins}_i \\
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash \textit{Action}( \textit{ins}_1, \cdots, \textit{ins}_k) }
+
+\end{mathpar}
+
+
+  \item Bypass statement
+
+\begin{mathpar}
+
+    \inferA {BypS-1}
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash c:(Int, n) \\ 
+      \\ n =0 \vee n =1 \vee n =2 \\ \mathcal{L}_{C}~is~ \mathcal{L}_{A},\mathcal{L}_{B0}~or~\mathcal{L}_{B1}
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash \textit{Bypass}( c) }
+
+    \and\inferA {BypS-2}
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash c:(Int, n) \\
+      \\ n =0 \vee n =1 \vee n =2
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash \textit{Bypass}( c) }
+
+\end{mathpar}
+
+  \item Layer statement
+
+\begin{mathpar}
+
+    \inferA {LSL}
+    { \forall i: 1\leq i \leq n. ( \textit{ls}_i =\textit{Action}( \textit{ins}_1, \cdots, \textit{ins}_k) \rightarrow \\ \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash \textit{Action}( \textit{ins}_1, \cdots, \textit{ins}_k)) \\
+    \forall i: 1\leq i \leq n. ( \textit{ls}_i =\textit{Bypass}( c) \rightarrow \\ \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash \textit{Bypass}( c)) \\
+    \forall i: 1\leq i \leq n. ( \textit{ls}_i =\textit{IfElseL} (  \textit{if\_l\_list} , \textit{d\_l}) \rightarrow \\ \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash \textit{IfElseL} (  \textit{if\_l\_list} , \textit{d\_l})) \\ \mathcal{L}_{C}~is~ \mathcal{L}_{A},\mathcal{L}_{B0}~or~\mathcal{L}_{B1}
+    }
+    { \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash ( \textit{ls}_1, \cdots, \textit{ls}_n) }
+
+\end{mathpar}
+
+\begin{mathpar}
+
+    \inferA {IFEL}
+    { \textit{if\_l\_list} = ( ( e_1, \textit{l\_stmts}_1 ), \cdots, ( e_k, \textit{l\_stmts}_k ) ) \\
+      \textit{d\_l} = \textit{l\_stmts} \\
+    \forall i: 1\leq i \leq k. \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash e_k : Bool \\
+    \forall i: 1\leq i \leq k. \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash \textit{l\_stmts}_i \\
+    \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash \textit{d\_l} \\ \mathcal{L}_{C}~is~ \mathcal{L}_{A},\mathcal{L}_{B0}~or~\mathcal{L}_{B1}
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash \textit{IfElseL} (  \textit{if\_l\_list} , \textit{d\_l}) }
+
+\end{mathpar}
+
+  \item Layer local actions 
+
+\begin{mathpar}
+
+    \inferA {LLA}
+    {  \textit{caas} = \textit{CellA} ( \textit{ca\_l\_s\_list} )  \\    
+       \textit{cb0as} = \textit{CellB0} ( \textit{cb0\_l\_s\_list} )  \\
+       \textit{cb1as} = \textit{CellB1} ( \textit{cb1\_l\_s\_list} )  \\
+       \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash \textit{ca\_l\_s\_list} \\
+       \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash \textit{cb0\_l\_s\_list} \\
+       \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash \textit{cb1\_l\_s\_list} \\
+       \mathcal{L}_{C}~is~ \mathcal{L}_{A},\mathcal{L}_{B0}~or~\mathcal{L}_{B1}
+    }
+    { \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{C} \vdash \textit{LocalActions} ( \textit{caas}, \textit{cb0as}, \textit{cb1as}) }
+
+\end{mathpar}
+
+  \item Layer local register declarations
+
+\begin{mathpar}
+
+    \inferA {LLRD}
+    {  \textit{cars} = \textit{CellARegs} ( \textit{ca\_ra\_ss\_list} )  \\
+       \textit{cb0rs} = \textit{CellB0Regs} ( \textit{cb0\_ra\_ss\_list} )  \\
+       \textit{cb1rs} = \textit{CellB1Regs} ( \textit{cb1\_ra\_ss\_list} )  \\
+       \forall\textit{ras}\in\textit{ca\_ra\_ss\_list}.~\mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L} \vdash \textit{ras} \\
+       \forall\textit{ras}\in\textit{cb0\_ra\_ss\_list}.~\mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L} \vdash \textit{ras} \\
+       \forall\textit{ras}\in\textit{cb1\_ra\_ss\_list}.~\mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L} \vdash \textit{ras} \\
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L} \vdash \textit{LocalRegs} ( \textit{cars}, \textit{cb0rs}, \textit{cb1rs}) }
+
+\end{mathpar}
+
+  \item Layer action
+
+\begin{mathpar}
+
+    \inferA {LA}
+    { \mathcal{L}\textit{set} \vdash \textit{Lset}(\textit{id}_{1}, \cdots, \textit{id}_{k}) \\  \textit{id} \in \{ \textit{id}_{1}, \cdots, \textit{id}_{k}) \}  \\
+    \textit{locals} = (\textit{vd}_{1}, \cdots, \textit{vd}_{l}) \\
+    \forall i: 1\leq i \leq l. \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}_{\textit{id}} \vdash \textit{vd}_{i} \\
+    \textit{l\_decls} =  \textit{LocalRegs} ( \textit{cars}, \textit{cb0rs}, \textit{cb1rs}) (\textit{ld}_{1}, \cdots, \textit{ld}_{m}) \\
+    \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}_{\textit{id}}  \vdash \textit{LocalRegs} ( \textit{cars}, \textit{cb0rs}, \textit{cb1rs}) \vdash \textit{LocalRegs} ( \textit{cars}, \textit{cb0rs}, \textit{cb1rs}) \\
+    \forall i: 1\leq i \leq m. \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}_{\textit{id}}  \vdash \textit{ld}_{i} \\
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G} \vdash \textit{LayerAction} ( \textit{id}, \textit{locals} , \textit{l\_decls} ) }
+
+\end{mathpar}
+
+
+  \item Protocol statement
+
+\begin{mathpar}
+
+    \inferA {PSL}
+    { \forall i: 1\leq i \leq n. ( \textit{ps}_i =\textit{Action}( \textit{ins}_1, \cdots, \textit{ins}_k) \rightarrow \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash \textit{Action}( \textit{ins}_1, \cdots, \textit{ins}_k) \\
+    \forall i: 1\leq i \leq n. ( \textit{ps}_i =\textit{IfElseP} (  \textit{if\_p\_list} , \textit{d\_p} \rightarrow \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash \textit{IfElseP} (  \textit{if\_p\_list} , \textit{d\_p}) \\
+    \forall i: 1\leq i \leq n. ( \textit{ps}_i = \textit{NextHeader} ( \textit{id} ) \rightarrow \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash \textit{NextHeader} ( \textit{id} ) \\
+    \forall i: 1\leq i \leq n. ( \textit{ps}_i = \textit{Bypass}(c) \rightarrow \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash \textit{Bypass}(c) \\
+    \forall i: 1\leq i \leq n. ( \textit{ps}_i = \textit{Length} ( e ) \rightarrow \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash \textit{Length} ( e ) \\
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{P}  \vdash ( \textit{ps}_1, \cdots, \textit{ps}_n) }
+
+\end{mathpar}
+
+\begin{mathpar}
+
+    \inferA {IFEP}
+    { \textit{if\_p\_list} = ( ( e_1, \textit{p\_stmts}_1 ), \cdots, ( e_k, \textit{p\_stmts}_k ) ) \\
+      \textit{d\_p} = \textit{p\_stmts} \\
+    \forall i: 1\leq i \leq k. \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash e_k : Bool \\
+    \forall i: 1\leq i \leq k. \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash \textit{p\_stmts}_i \\
+    \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash \textit{p\_stmts} \\
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash \textit{IfElseL} (  \textit{if\_p\_list} , \textit{d\_p}) }
+
+\end{mathpar}
+
+\begin{mathpar}
+
+    \inferA {NextHeader}
+    { \mathcal{P}\textit{set} \vdash \textit{Pset}(id_{1}, \cdots, id_{k}) \\
+      \textit{id} \in \{id_{1}, \cdots, id_{k}\} \\
+      \mathcal{L}\textit{set} \vdash \diamond \\  \mathcal{C} \vdash \diamond \\ \mathcal{T} \vdash \diamond \\ \mathcal{G} \vdash \diamond \\ \mathcal{L} \vdash \diamond \\ \mathcal{L_{A}} \vdash \diamond \\
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash \textit{NextHeader} (\textit{id})  }
+
+\end{mathpar}
+
+\begin{mathpar}
+
+    \inferA {Length}
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash ( \textit{Fields} ( \textit{flds} ), \textit{OptionFields} ( \textit{oflds} )) \\
+      \textit{flds} = ( (\textit{fld}_1: c_1), \cdots,  (\textit{fld}_k: c_k) ) \\
+      \phi \vdash c_1 : (\textit{Int}, n_1), \cdots, \phi \vdash c_k : (\textit{Int}, n_k) \\
+      \phi \vdash e : (\textit{Int}, n)  \\ n*8 = n_1 + \cdots + n_k \\
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash \textit{Length} (e)  }
+
+\end{mathpar}
+
+
+  \item Protocol declaration
+
+\begin{mathpar}
+
+    \inferA {Protocol}
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash \textit{fields} \\
+    \textit{locals} = (\textit{vd}_{1}, \cdots, \textit{vd}_{l}) \\
+    \forall i: 1\leq i \leq l. \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash \textit{vd}_{i} \\
+    \textit{p\_stmts} = (\textit{ps}_{1}, \cdots, \textit{ps}_{m}) \\
+    \forall i: 1\leq i \leq m. \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash \textit{ps}_{i} \\
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P} \vdash \textit{Protocol} ( \textit{fields} , \textit{locals} , \textit{p\_stmts} )
+    }
+
+    \and\inferA {PD}
+    { \mathcal{P}\textit{set} \vdash \textit{Pset}(\textit{id}_{1}, \cdots, \textit{id}_{k}) \\  \textit{id} \in \{ \textit{id}_{1}, \cdots, \textit{id}_{k}) \}  \\
+    \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A}, \mathcal{P}_{\textit{id}} \vdash p \\
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}, \mathcal{L}_{A} \vdash \textit{ProtocolDecl} ( \textit{id} , p ) }
+
+\end{mathpar}
+
+
+  \item Global declarations (to be fixed)
+
+\begin{mathpar}
+
+    \inferA {PDG}
+    { \mathcal{L}\textit{set} \vdash \textit{Lset}(\textit{id}_{1}, \cdots, \textit{id}_{k}) \\
+      \forall \textit{lid} \in \{ \textit{id}_{1}, \cdots, \textit{id}_{k}) \}. ( \textit{ProtocolDef} (\textit{id}, \cdots )~\textit{is}~\textit{declared}~\textit{at}~\textit{the}~\textit{layer}~\textit{lid}  \rightarrow \\ \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G}, \mathcal{L}_{\textit{lid}}, \mathcal{L}_{A} \vdash \textit{ProtocolDecl} ( \textit{id} , p ) ) \\
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G} \vdash \textit{ProtocolDecl} ( \textit{id} , p ) }
+
+\end{mathpar}
+
+
+\begin{mathpar}
+
+    \inferA {GDecl}
+    { \forall i: 1\leq i \leq n. ( \textit{decl}_i = \textit{ConstDecl} ( \textit{consdcl} ) \rightarrow \mathcal{C}, \mathcal{T}, \mathcal{G} \vdash \textit{consdcl} \\
+      \forall i: 1\leq i \leq n. ( \textit{decl}_i = \textit{TypeDecl} ( \textit{typedcl} ) \rightarrow \mathcal{C}, \mathcal{T}, \mathcal{G} \vdash \textit{typedcl} \\
+      \forall i: 1\leq i \leq n. ( \textit{decl}_i = \textit{VarDecl} ( \textit{vardcl} ) \rightarrow \mathcal{C}, \mathcal{T}, \mathcal{G} \vdash \textit{vardcl} \\
+      \forall i: 1\leq i \leq n. ( \textit{decl}_i = \textit{RegisterDecl} ( \textit{regdcl} ) \rightarrow \mathcal{C}, \mathcal{T}, \mathcal{G} \vdash \textit{regdcl} \\
+      \forall i: 1\leq i \leq n. ( \textit{decl}_i = \textit{RegAccSet} ( \textit{regacc} ) \rightarrow \mathcal{C}, \mathcal{T}, \mathcal{G} \vdash \textit{regacc} \\
+      \forall i: 1\leq i \leq n. ( \textit{decl}_i = \textit{ProtocolDecl} ( \textit{pdcl} ) \rightarrow \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G} \vdash \textit{pdcl} \\
+      \forall i: 1\leq i \leq n. ( \textit{decl}_i = \textit{LayerAction} ( \textit{lact} ) \rightarrow \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G} \vdash \textit{lact} \\
+    }
+    { \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G} \vdash ( \textit{decl}_1, \cdots, \textit{decl}_n)
+    }
+
+\end{mathpar}
+
+  \item Parser Specification
+
+\begin{mathpar}
+
+    \inferA {Pspec}
+    { \mathcal{P}\textit{set} \vdash \textit{Pset}(\textit{p\_set}) \\ \mathcal{L}\textit{set} \vdash \textit{Lset}(\textit{l\_set}) \\
+      \mathcal{P}\textit{set}, \mathcal{L}\textit{set}, \mathcal{C}, \mathcal{T}, \mathcal{G} \vdash \textit{decls} \\
+    }
+    { \phi \vdash \textit{Parser} ( \textit{p\_set}, \textit{l\_set}, \textit{decls} )
+    }
+
+\end{mathpar}
+
+
+\end{itemize}
+
+\subsection{Implementation and Verification} \label{Type-checker Implementation and Verification}
+
+\begin{flushleft}
+$\cdots$ $\cdots$
+\end{flushleft}
+
+\section{Translation}
+
+\subsection{Translation of AST to the P3 Assembly}
+
+$\cdots$ $\cdots$
+
+\subsection{Translation of P3 Assembly to the Configuration File}
+
+$\cdots$ $\cdots$
+
+
+\section{Verification}
+
+Refer to Section \ref{Parser Implementation and Verification} and Section \ref{Type-checker Implementation and Verification}  for the verification of parser and type checker respectively.
+
+
+\subsection{Verification of the translation from AST to Assembly}
+
+$\cdots$ $\cdots$
+
+
+\section{Conclusion}
+
+$\cdots$ $\cdots$
+
+\end{document}

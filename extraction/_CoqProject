@@ -1,0 +1,1 @@
+-I ../driver -I ../util -I ../validator -I ../lib -I ../parser -I ../extraction -batch -load-vernac-source
