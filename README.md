@@ -22,7 +22,13 @@ It is recommended that you use Docker to deploy an out-of-box envrionment. Just 
 
 ```
 docker build --tag=p3c .
-docker run -it p3c
+docker run -it -v $(pwd):/home/coq/p3c p3c
+```
+
+Then change the directory to p3c in the container
+
+```
+cd p3c
 ```
 
 ### Compilation
@@ -37,8 +43,14 @@ make all
 
 Test cases lie within the `test/` folder.
 
+Print the AST
+
 ```
-./Driver.native test/sample.ppp
+./p3c -print-ast test/beautify.ppp
+```
+or
+```
+./p3c -print-ast test/original.ppp
 ```
 
 ---
@@ -48,3 +60,5 @@ Test cases lie within the `test/` folder.
 * **Ling Li** - liling14(AT)tsinghua.org.cn
 
 * **Shengyuan Wang** - wwssyy(AT)tsinghua.edu.cn
+
+* **Huanghua Li** - lihh18(AT)mails.tsinghua.edu.cn
