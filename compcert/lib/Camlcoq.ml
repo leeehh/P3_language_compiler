@@ -20,7 +20,7 @@ open BinNums
 open BinNat
 open BinInt
 open BinPos
-(* open Floats *)
+open Floats
 
 (* Coq's [nat] type and some of its operations *)
 
@@ -319,7 +319,7 @@ let coqstring_of_camlstring s =
 
 (* Floats *)
 
-(* let coqfloat_of_camlfloat f =
+let coqfloat_of_camlfloat f =
   Float.of_bits(coqint_of_camlint64(Int64.bits_of_float f))
 let camlfloat_of_coqfloat f =
   Int64.float_of_bits(camlint64_of_coqint(Float.to_bits f))
@@ -327,7 +327,7 @@ let camlfloat_of_coqfloat f =
 let coqfloat32_of_camlfloat f =
   Float32.of_bits(coqint_of_camlint(Int32.bits_of_float f))
 let camlfloat_of_coqfloat32 f =
-  Int32.float_of_bits(camlint_of_coqint(Float32.to_bits f)) *)
+  Int32.float_of_bits(camlint_of_coqint(Float32.to_bits f))
 
 (* Int31 *)
 

@@ -1,11 +1,16 @@
 (**************************************
-  Filename: Output.ml
+  Filename: AstWriter.ml
   Project:  P3 Compilers
   Author:   Ling.Li
   Date:     2018.06.21
 **************************************)
 
 open Tree
+
+let rec bin2int i = match i with
+  | BinNums.Coq_xI p -> let n = bin2int p in n + n + 1
+  | BinNums.Coq_xO p -> let n = bin2int p in n + n
+  | BinNums.Coq_xH -> 1
 
 let indent depth str = Printf.sprintf "%s%s" (String.make (depth * 4) ' ') str
 
@@ -57,16 +62,16 @@ and print_constant depth node = match node with
     ]
 
 and print_identifier depth node = 
-  indent depth (Printf.sprintf "<id>(%s)" node.name)
+  indent depth (Printf.sprintf "<id>(%s, %d)" node.name (bin2int node.key))
 
 and print_integer depth node =
-  indent depth (Printf.sprintf "<int>(%s)" node.name)
+  indent depth (Printf.sprintf "<int>(%s, %d)" node.name (bin2int node.key))
 
 and print_hexadecimal depth node =
-  indent depth (Printf.sprintf "<hex>(%s)" node.name)
+  indent depth (Printf.sprintf "<hex>(%s, %d)" node.name (bin2int node.key))
 
 and print_bit depth node =
-  indent depth (Printf.sprintf "<bit>(%s)" node.name)
+  indent depth (Printf.sprintf "<bit>(%s, %d)" node.name (bin2int node.key))
 
 and print_id_list depth node =
   String.concat "\n" (List.map (print_identifier depth) node);
@@ -115,7 +120,7 @@ and print_constant_declaration depth node = match node with
     String.concat "\n" [
       indent depth "<const_decl>";
       print_identifier (depth + 1) v1;
-      print_expression (depth + 1) v2;
+      print_constant (depth + 1) v2;
     ]
 
 and print_protocol_declaration depth node = match node with
@@ -167,7 +172,7 @@ and print_optional_field depth node = match node with
       print_constant (depth + 1) v2;
     ]
   | No_Optional_Field ->
-    indent depth "<option_field>(None)"
+    indent depth "<no_option_field>"
 
 and print_protocol_statement_list depth node =
   String.concat "\n" (List.map (print_protocol_statement depth) node)
@@ -181,23 +186,41 @@ and print_protocol_statement depth node = match node with
   | Protocol_Next_Header v1 ->
     String.concat "\n" [
       indent depth "<p_stmt>";
-      print_identifier (depth + 1) v1;
+      print_next_header (depth + 1) v1;
     ]
   | Protocol_Length v1 ->
     String.concat "\n" [
       indent depth "<p_stmt>";
-      print_constant (depth + 1) v1;
+      print_length (depth + 1) v1;
     ]
   | Protocol_Bypass v1 ->
     String.concat "\n" [
       indent depth "<p_stmt>";
-      print_constant (depth + 1) v1;
+      print_bypass (depth + 1) v1;
     ]
   | Protocol_Action v1 ->
     String.concat "\n" [
       indent depth "<p_stmt>";
       print_action_statement (depth + 1) v1;
     ]
+
+and print_next_header depth node = 
+  String.concat "\n" [
+    indent depth "<next_header>";
+    print_identifier (depth + 1) node;
+  ]
+
+and print_length depth node = 
+  String.concat "\n" [
+    indent depth "<length>";
+    print_constant (depth + 1) node;
+  ]
+
+and print_bypass depth node = 
+  String.concat "\n" [
+    indent depth "<bypass>";
+    print_constant (depth + 1) node;
+  ]
 
 and print_protocol_if_statement depth node = match node with
   | Protocol_If_Statement (v1, v2) ->
@@ -225,7 +248,7 @@ and print_protocol_default_branch depth node = match node with
       print_protocol_statement_list (depth + 1) v1;
     ]
   | Protocol_No_Default_Branch ->
-    indent depth "<default_branch_p>(None)"
+    indent depth "<no_default_branch_p>"
 
 and print_action_statement depth node = match node with
   | Action_Statement v1 ->
@@ -240,7 +263,7 @@ and print_instruction_list depth node =
 and print_instruction depth node = match node with
   | Set_Instruction (v1, v2) ->
     String.concat "\n" [
-      indent depth "<seq_instruction>";
+      indent depth "<set_instruction>";
       print_target_register_access_name (depth + 1) v1;
       print_expression (depth + 1) v2;
     ]
@@ -427,12 +450,12 @@ and print_layer_statement depth node = match node with
   | Layer_Bypass v1 ->
     String.concat "\n" [
       indent depth "<l_stmt>";
-      print_constant (depth + 1) v1;
+      print_bypass (depth + 1) v1;
     ]
   | Layer_Next_Header v1 ->
     String.concat "\n" [
       indent depth "<l_stmt>";
-      print_identifier (depth + 1) v1;
+      print_next_header (depth + 1) v1;
     ]
   | Layer_Length v1 ->
     String.concat "\n" [
@@ -525,10 +548,6 @@ and print_expression depth node = match node with
 and print_unary_operator depth node = match node with
   | Unary_Int ->
     indent depth "<unop>(int)"
-  | Unary_Hex ->
-    indent depth "<unop>(hex)"
-  | Unary_Bit ->
-    indent depth "<unop>(bit)>"
   | Unary_Not ->
     indent depth "<unop>(not)"
   | Unary_Tilde ->
@@ -544,35 +563,39 @@ and print_binary_operator depth node = match node with
   | Binary_Div ->
     indent depth "<binop>(/)"
   | Binary_Mod ->
-    indent depth "binop(%)"
+    indent depth "<binop>(%)"
   | Binary_AndAnd ->
-    indent depth "binop(&&)"
+    indent depth "<binop>(&&)"
   | Binary_OrOr ->
-    indent depth "binop(||)"
+    indent depth "<binop>(||)"
   | Binary_And ->
-    indent depth "binop(&)"
+    indent depth "<binop>(&)"
   | Binary_Or ->
-    indent depth "binop(|)"
+    indent depth "<binop>(|)"
   | Binary_Xor ->
-    indent depth "binop(^)"
+    indent depth "<binop>(^)"
   | Binary_EqEq ->
-    indent depth "binop(==)"
+    indent depth "<binop>(==)"
   | Binary_Neq ->
-    indent depth "binop(<>)"
+    indent depth "<binop>(<>)"
   | Binary_Les ->
-    indent depth "binop(<)"
+    indent depth "<binop>(<)"
   | Binary_Gre ->
-    indent depth "binop(>)"
+    indent depth "<binop>(>)"
   | Binary_LesEq ->
-    indent depth "binop(<=)"
+    indent depth "<binop>(<=)"
   | Binary_GreEq ->
-    indent depth "binop(>=)"
+    indent depth "<binop>(>=)"
   | Binary_LesLes ->
-    indent depth "binop(<<)"
+    indent depth "<binop>(<<)"
   | Binary_GreGre ->
-    indent depth "binop(>>)"
+    indent depth "<binop>(>>)"
   | Binary_AddAdd ->
-    indent depth "binop(++)"
+    indent depth "<binop>(++)"
+  | Binary_Hex ->
+    indent depth "<binop>(hex)"
+  | Binary_Bit ->
+    indent depth "<binop>(bit)>"
 
 let ast_to_string ast =
   print_parser 0 ast

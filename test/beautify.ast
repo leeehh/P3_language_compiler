@@ -1,0 +1,1320 @@
+<parser>
+    <layer_reg_len>
+        <const>
+            <int>(72, 1)
+    <cell_reg_len>
+        <const>
+            <int>(24, 1)
+    <protocol_set>
+        <id>(ethernet, 1)
+        <id>(ieee802-1qTag, 2)
+        <id>(ipv4, 3)
+        <id>(mpls, 4)
+        <id>(ieee802-1OuterTag, 5)
+        <id>(lldp, 6)
+        <id>(trill, 7)
+        <id>(qcn, 8)
+        <id>(igmp, 9)
+        <id>(ospf, 10)
+        <id>(pim, 11)
+        <id>(tcp, 12)
+        <id>(udp, 13)
+    <layer_set>
+        <id>(l2, 14)
+        <id>(l2s, 15)
+        <id>(l3, 16)
+        <id>(l3s, 17)
+        <id>(l4, 18)
+    <decl>
+        <const_decl>
+            <id>(global_IRF_len, 19)
+            <const>
+                <int>(64, 1)
+    <decl>
+        <reg_acc_set>
+            <reg_acc_name>
+                <id>(IRF_gp_reg0_2b, 20)
+            <binop_expr>
+                <binop>(+)
+                <const_expr>
+                    <const>
+                        <id>(global_IRF_len, 19)
+                <const_expr>
+                    <const>
+                        <int>(1, 1)
+            <const_expr>
+                <const>
+                    <id>(global_IRF_len, 19)
+    <decl>
+        <reg_acc_set>
+            <reg_acc_name>
+                <id>(IRF_gp_reg1_2b, 21)
+            <binop_expr>
+                <binop>(+)
+                <const_expr>
+                    <const>
+                        <id>(global_IRF_len, 19)
+                <const_expr>
+                    <const>
+                        <int>(3, 1)
+            <binop_expr>
+                <binop>(+)
+                <const_expr>
+                    <const>
+                        <id>(global_IRF_len, 19)
+                <const_expr>
+                    <const>
+                        <int>(2, 1)
+    <decl>
+        <layer_action>
+            <id>(l2, 14)
+            <local_reg_decl>
+                <cella_regs>
+                    <reg_acc_set>
+                        <reg_acc_name>
+                            <id>(IRF_l2_send_to_cpu_8b, 22)
+                        <const_expr>
+                            <const>
+                                <int>(15, 1)
+                        <const_expr>
+                            <const>
+                                <int>(8, 1)
+                    <reg_acc_set>
+                        <reg_acc_name>
+                            <id>(IRF_tag_type_2b, 23)
+                        <const_expr>
+                            <const>
+                                <int>(23, 1)
+                        <const_expr>
+                            <const>
+                                <int>(16, 1)
+                    <reg_acc_set>
+                        <reg_acc_name>
+                            <id>(IRF_pkt_type_3b, 24)
+                        <const_expr>
+                            <const>
+                                <int>(31, 1)
+                        <const_expr>
+                            <const>
+                                <int>(24, 1)
+                    <reg_acc_set>
+                        <reg_acc_name>
+                            <id>(IRF_l2_protocol_flag_type_8b, 25)
+                        <const_expr>
+                            <const>
+                                <int>(39, 1)
+                        <const_expr>
+                            <const>
+                                <int>(32, 1)
+                    <reg_acc_set>
+                        <reg_acc_name>
+                            <id>(IRF_outer_vlan_high, 26)
+                        <const_expr>
+                            <const>
+                                <int>(199, 1)
+                        <const_expr>
+                            <const>
+                                <int>(192, 1)
+                    <reg_acc_set>
+                        <reg_acc_name>
+                            <id>(IRF_outer_vlan_low, 27)
+                        <const_expr>
+                            <const>
+                                <int>(207, 1)
+                        <const_expr>
+                            <const>
+                                <int>(200, 1)
+                    <reg_acc_set>
+                        <reg_acc_name>
+                            <id>(IRF_inner_vlan_high, 28)
+                        <const_expr>
+                            <const>
+                                <int>(215, 1)
+                        <const_expr>
+                            <const>
+                                <int>(208, 1)
+                    <reg_acc_set>
+                        <reg_acc_name>
+                            <id>(IRF_inner_vlan_low, 29)
+                        <const_expr>
+                            <const>
+                                <int>(223, 1)
+                        <const_expr>
+                            <const>
+                                <int>(216, 1)
+                <cellb0_regs>
+                    <reg_acc_set>
+                        <reg_acc_name>
+                            <id>(IRF_l2_type, 30)
+                        <const_expr>
+                            <const>
+                                <int>(7, 1)
+                        <const_expr>
+                            <const>
+                                <int>(0, 1)
+                <cellb1_regs>(None)
+            <l_decl>
+                <id>(ethernet, 1)
+                <id>(eth, 31)
+            <l_decl>
+                <id>(ieee802-1qTag, 2)
+                <id>(vlan, 32)
+            <l_decl>
+                <id>(ieee802-1OuterTag, 5)
+                <id>(qinq, 33)
+            <l_actions>
+                <cella_actions>
+                    <l_stmt>
+                        <if_else_l_stmt>
+                            <if_branch_l>
+                                <binop_expr>
+                                    <binop>(&&)
+                                    <paren_expr>
+                                        <binop_expr>
+                                            <binop>(==)
+                                            <field_expr>
+                                                <const_expr>
+                                                    <const>
+                                                        <id>(eth, 31)
+                                                <id>(etherType, 34)
+                                            <const_expr>
+                                                <const>
+                                                    <hex>(0x8100, 1)
+                                    <paren_expr>
+                                        <binop_expr>
+                                            <binop>(==)
+                                            <field_expr>
+                                                <const_expr>
+                                                    <const>
+                                                        <id>(vlan, 32)
+                                                <id>(etherType, 34)
+                                            <const_expr>
+                                                <const>
+                                                    <hex>(0x0800, 1)
+                                <l_stmt>
+                                    <binop_expr>
+                                        <binop>(+)
+                                        <length _expr>
+                                            <id>(eth, 31)
+                                        <length _expr>
+                                            <id>(vlan, 32)
+                                <l_stmt>
+                                    <next_header>
+                                        <id>(ipv4, 3)
+                                <l_stmt>
+                                    <bypass>
+                                        <const>
+                                            <int>(1, 1)
+                                <l_stmt>
+                                    <action_stmt>
+                                        <mov_instruction>
+                                            <mov_reg_acc_name>
+                                                <mov_reg_acc_name>
+                                                    <tgt_reg_acc_name>
+                                                        <id>(IRF_outer_vlan_high, 26)
+                                                <tgt_reg_acc_name>
+                                                    <id>(IRF_outer_vlan_low, 27)
+                                            <binop_expr>
+                                                <binop>(++)
+                                                <binop_expr>
+                                                    <binop>(++)
+                                                    <field_expr>
+                                                        <const_expr>
+                                                            <const>
+                                                                <id>(vlan, 32)
+                                                        <id>(pcp, 35)
+                                                    <field_expr>
+                                                        <const_expr>
+                                                            <const>
+                                                                <id>(vlan, 32)
+                                                        <id>(cfi, 36)
+                                                <field_expr>
+                                                    <const_expr>
+                                                        <const>
+                                                            <id>(vlan, 32)
+                                                    <id>(vid, 37)
+                                        <set_instruction>
+                                            <tgt_reg_acc_name>
+                                                <id>(IRF_tag_type_2b, 23)
+                                            <const_expr>
+                                                <const>
+                                                    <int>(1, 1)
+                                        <set_instruction>
+                                            <tgt_reg_acc_name>
+                                                <id>(IRF_pkt_type_3b, 24)
+                                            <const_expr>
+                                                <const>
+                                                    <int>(0, 1)
+                            <if_branch_l>
+                                <binop_expr>
+                                    <binop>(&&)
+                                    <binop_expr>
+                                        <binop>(&&)
+                                        <paren_expr>
+                                            <binop_expr>
+                                                <binop>(||)
+                                                <binop_expr>
+                                                    <binop>(||)
+                                                    <binop_expr>
+                                                        <binop>(==)
+                                                        <field_expr>
+                                                            <const_expr>
+                                                                <const>
+                                                                    <id>(eth, 31)
+                                                            <id>(etherType, 34)
+                                                        <const_expr>
+                                                            <const>
+                                                                <hex>(0x88a8, 1)
+                                                    <binop_expr>
+                                                        <binop>(==)
+                                                        <field_expr>
+                                                            <const_expr>
+                                                                <const>
+                                                                    <id>(eth, 31)
+                                                            <id>(etherType, 34)
+                                                        <const_expr>
+                                                            <const>
+                                                                <hex>(0x9200, 1)
+                                                <binop_expr>
+                                                    <binop>(==)
+                                                    <field_expr>
+                                                        <const_expr>
+                                                            <const>
+                                                                <id>(eth, 31)
+                                                        <id>(etherType, 34)
+                                                    <const_expr>
+                                                        <const>
+                                                            <hex>(0x9300, 1)
+                                        <paren_expr>
+                                            <binop_expr>
+                                                <binop>(==)
+                                                <field_expr>
+                                                    <const_expr>
+                                                        <const>
+                                                            <id>(qinq, 33)
+                                                    <id>(ethertype_o, 38)
+                                                <const_expr>
+                                                    <const>
+                                                        <hex>(0x8100, 1)
+                                    <paren_expr>
+                                        <binop_expr>
+                                            <binop>(==)
+                                            <field_expr>
+                                                <const_expr>
+                                                    <const>
+                                                        <id>(qinq, 33)
+                                                <id>(etherType_i, 39)
+                                            <const_expr>
+                                                <const>
+                                                    <hex>(0x0800, 1)
+                                <l_stmt>
+                                    <binop_expr>
+                                        <binop>(+)
+                                        <length _expr>
+                                            <id>(eth, 31)
+                                        <length _expr>
+                                            <id>(qinq, 33)
+                                <l_stmt>
+                                    <next_header>
+                                        <id>(ipv4, 3)
+                                <l_stmt>
+                                    <bypass>
+                                        <const>
+                                            <int>(1, 1)
+                                <l_stmt>
+                                    <action_stmt>
+                                        <mov_instruction>
+                                            <mov_reg_acc_name>
+                                                <mov_reg_acc_name>
+                                                    <tgt_reg_acc_name>
+                                                        <id>(IRF_outer_vlan_high, 26)
+                                                <tgt_reg_acc_name>
+                                                    <id>(IRF_outer_vlan_low, 27)
+                                            <binop_expr>
+                                                <binop>(++)
+                                                <binop_expr>
+                                                    <binop>(++)
+                                                    <field_expr>
+                                                        <const_expr>
+                                                            <const>
+                                                                <id>(qinq, 33)
+                                                        <id>(pcp_o, 40)
+                                                    <field_expr>
+                                                        <const_expr>
+                                                            <const>
+                                                                <id>(qinq, 33)
+                                                        <id>(cfi_o, 41)
+                                                <field_expr>
+                                                    <const_expr>
+                                                        <const>
+                                                            <id>(qinq, 33)
+                                                    <id>(vid_o, 42)
+                                        <mov_instruction>
+                                            <mov_reg_acc_name>
+                                                <mov_reg_acc_name>
+                                                    <tgt_reg_acc_name>
+                                                        <id>(IRF_inner_vlan_high, 28)
+                                                <tgt_reg_acc_name>
+                                                    <id>(IRF_inner_vlan_low, 29)
+                                            <binop_expr>
+                                                <binop>(++)
+                                                <binop_expr>
+                                                    <binop>(++)
+                                                    <field_expr>
+                                                        <const_expr>
+                                                            <const>
+                                                                <id>(qinq, 33)
+                                                        <id>(pcp_i, 43)
+                                                    <field_expr>
+                                                        <const_expr>
+                                                            <const>
+                                                                <id>(qinq, 33)
+                                                        <id>(cfi_i, 44)
+                                                <field_expr>
+                                                    <const_expr>
+                                                        <const>
+                                                            <id>(qinq, 33)
+                                                    <id>(vid_i, 45)
+                                        <set_instruction>
+                                            <tgt_reg_acc_name>
+                                                <id>(IRF_tag_type_2b, 23)
+                                            <const_expr>
+                                                <const>
+                                                    <int>(2, 1)
+                                        <set_instruction>
+                                            <tgt_reg_acc_name>
+                                                <id>(IRF_pkt_type_3b, 24)
+                                            <const_expr>
+                                                <const>
+                                                    <int>(0, 1)
+                            <if_branch_l>
+                                <binop_expr>
+                                    <binop>(==)
+                                    <field_expr>
+                                        <const_expr>
+                                            <const>
+                                                <id>(eth, 31)
+                                        <id>(etherType, 34)
+                                    <const_expr>
+                                        <const>
+                                            <hex>(0x0800, 1)
+                                <l_stmt>
+                                    <length _expr>
+                                        <id>(eth, 31)
+                                <l_stmt>
+                                    <next_header>
+                                        <id>(ipv4, 3)
+                                <l_stmt>
+                                    <bypass>
+                                        <const>
+                                            <int>(1, 1)
+                                <l_stmt>
+                                    <action_stmt>
+                                        <set_instruction>
+                                            <tgt_reg_acc_name>
+                                                <id>(IRF_tag_type_2b, 23)
+                                            <const_expr>
+                                                <const>
+                                                    <int>(0, 1)
+                                        <set_instruction>
+                                            <tgt_reg_acc_name>
+                                                <id>(IRF_pkt_type_3b, 24)
+                                            <const_expr>
+                                                <const>
+                                                    <int>(0, 1)
+                            <if_branch_l>
+                                <binop_expr>
+                                    <binop>(==)
+                                    <field_expr>
+                                        <const_expr>
+                                            <const>
+                                                <id>(eth, 31)
+                                        <id>(etherType, 34)
+                                    <const_expr>
+                                        <const>
+                                            <hex>(0x88CC, 1)
+                                <l_stmt>
+                                    <length _expr>
+                                        <id>(eth, 31)
+                                <l_stmt>
+                                    <next_header>
+                                        <id>(lldp, 6)
+                                <l_stmt>
+                                    <bypass>
+                                        <const>
+                                            <int>(2, 1)
+                                <l_stmt>
+                                    <action_stmt>
+                                        <set_instruction>
+                                            <tgt_reg_acc_name>
+                                                <id>(IRF_l2_protocol_flag_type_8b, 25)
+                                            <const_expr>
+                                                <const>
+                                                    <int>(66, 1)
+                            <default_branch_l>
+                                <l_stmt>
+                                    <bypass>
+                                        <const>
+                                            <int>(2, 1)
+                                <l_stmt>
+                                    <action_stmt>
+                                        <set_instruction>
+                                            <tgt_reg_acc_name>
+                                                <id>(IRF_l2_send_to_cpu_8b, 22)
+                                            <const_expr>
+                                                <const>
+                                                    <int>(1, 1)
+                <cellb0_actions>
+                    <l_stmt>
+                        <if_else_l_stmt>
+                            <if_branch_l>
+                                <binop_expr>
+                                    <binop>(==)
+                                    <field_expr>
+                                        <const_expr>
+                                            <const>
+                                                <id>(eth, 31)
+                                        <id>(dmac, 46)
+                                    <const_expr>
+                                        <const>
+                                            <hex>(0xFFFFFFFFFFFF, 1)
+                                <l_stmt>
+                                    <action_stmt>
+                                        <set_instruction>
+                                            <tgt_reg_acc_name>
+                                                <id>(IRF_l2_type, 30)
+                                            <const_expr>
+                                                <const>
+                                                    <int>(3, 1)
+                            <if_branch_l>
+                                <binop_expr>
+                                    <binop>(==)
+                                    <bit_expr>
+                                        <field_expr>
+                                            <const_expr>
+                                                <const>
+                                                    <id>(eth, 31)
+                                            <id>(dmac, 46)
+                                        <const_expr>
+                                            <const>
+                                                <int>(40, 1)
+                                    <const_expr>
+                                        <const>
+                                            <int>(1, 1)
+                                <l_stmt>
+                                    <action_stmt>
+                                        <set_instruction>
+                                            <tgt_reg_acc_name>
+                                                <id>(IRF_l2_type, 30)
+                                            <const_expr>
+                                                <const>
+                                                    <int>(2, 1)
+                            <default_branch_l>
+                                <l_stmt>
+                                    <action_stmt>
+                                        <set_instruction>
+                                            <tgt_reg_acc_name>
+                                                <id>(IRF_l2_type, 30)
+                                            <const_expr>
+                                                <const>
+                                                    <int>(1, 1)
+                <cellb1_actions>(None)
+    <decl>
+        <layer_action>
+            <id>(l2s, 15)
+            <local_reg_decl>
+                <cella_regs>(None)
+                <cellb0_regs>(None)
+                <cellb1_regs>(None)
+
+            <l_actions>
+                <cella_actions>(None)
+                <cellb0_actions>(None)
+                <cellb1_actions>(None)
+    <decl>
+        <layer_action>
+            <id>(l3, 16)
+            <local_reg_decl>
+                <cella_regs>
+                    <reg_acc_set>
+                        <reg_acc_name>
+                            <id>(IRF_l3_send_to_cpu_8b, 47)
+                        <const_expr>
+                            <const>
+                                <int>(7, 1)
+                        <const_expr>
+                            <const>
+                                <int>(0, 1)
+                    <reg_acc_set>
+                        <reg_acc_name>
+                            <id>(IRF_l3_encode, 48)
+                        <const_expr>
+                            <const>
+                                <int>(15, 1)
+                        <const_expr>
+                            <const>
+                                <int>(8, 1)
+                    <reg_acc_set>
+                        <reg_acc_name>
+                            <id>(IRF_l3_type, 49)
+                        <const_expr>
+                            <const>
+                                <int>(23, 1)
+                        <const_expr>
+                            <const>
+                                <int>(16, 1)
+                    <reg_acc_set>
+                        <reg_acc_name>
+                            <id>(IRF_l3_protocol_flag_type_8b, 50)
+                        <const_expr>
+                            <const>
+                                <int>(31, 1)
+                        <const_expr>
+                            <const>
+                                <int>(24, 1)
+                    <reg_acc_set>
+                        <reg_acc_name>
+                            <id>(IRF_TOS_8b, 51)
+                        <const_expr>
+                            <const>
+                                <int>(199, 1)
+                        <const_expr>
+                            <const>
+                                <int>(192, 1)
+                    <reg_acc_set>
+                        <reg_acc_name>
+                            <id>(IRF_ttl_8b, 52)
+                        <const_expr>
+                            <const>
+                                <int>(207, 1)
+                        <const_expr>
+                            <const>
+                                <int>(200, 1)
+                    <reg_acc_set>
+                        <reg_acc_name>
+                            <id>(IRF_TTL_EXP, 53)
+                        <const_expr>
+                            <const>
+                                <int>(391, 1)
+                        <const_expr>
+                            <const>
+                                <int>(384, 1)
+                <cellb0_regs>
+                    <reg_acc_set>
+                        <reg_acc_name>
+                            <id>(IRF_DIP_LB_MUL, 54)
+                        <const_expr>
+                            <const>
+                                <int>(7, 1)
+                        <const_expr>
+                            <const>
+                                <int>(0, 1)
+                    <reg_acc_set>
+                        <reg_acc_name>
+                            <id>(IRF_IPV4_IP_SPECIAL, 55)
+                        <const_expr>
+                            <const>
+                                <int>(15, 1)
+                        <const_expr>
+                            <const>
+                                <int>(8, 1)
+                    <reg_acc_set>
+                        <reg_acc_name>
+                            <id>(IRF_IPV4_SIP_LB, 56)
+                        <const_expr>
+                            <const>
+                                <int>(23, 1)
+                        <const_expr>
+                            <const>
+                                <int>(16, 1)
+                <cellb1_regs>
+                    <reg_acc_set>
+                        <reg_acc_name>
+                            <id>(IRF_IP_FRAG_STATUS, 57)
+                        <const_expr>
+                            <const>
+                                <int>(7, 1)
+                        <const_expr>
+                            <const>
+                                <int>(0, 1)
+            <l_decl>
+                <id>(ipv4, 3)
+                <id>(v4, 58)
+            <l_actions>
+                <cella_actions>
+                    <l_stmt>
+                        <action_stmt>
+                            <mov_instruction>
+                                <mov_reg_acc_name>
+                                    <tgt_reg_acc_name>
+                                        <id>(IRF_TOS_8b, 51)
+                                <field_expr>
+                                    <const_expr>
+                                        <const>
+                                            <id>(v4, 58)
+                                    <id>(diffserv, 59)
+                    <l_stmt>
+                        <action_stmt>
+                            <mov_instruction>
+                                <mov_reg_acc_name>
+                                    <tgt_reg_acc_name>
+                                        <id>(IRF_ttl_8b, 52)
+                                <field_expr>
+                                    <const_expr>
+                                        <const>
+                                            <id>(v4, 58)
+                                    <id>(ttl, 60)
+                    <l_stmt>
+                        <action_stmt>
+                            <lg_instruction>
+                                <tgt_reg_acc_name>
+                                    <id>(IRF_TTL_EXP, 53)
+                                <const_expr>
+                                    <const>
+                                        <int>(2, 1)
+                                <field_expr>
+                                    <const_expr>
+                                        <const>
+                                            <id>(v4, 58)
+                                    <id>(ttl, 60)
+                <cellb0_actions>
+                    <l_stmt>
+                        <if_else_l_stmt>
+                            <if_branch_l>
+                                <binop_expr>
+                                    <binop>(==)
+                                    <field_expr>
+                                        <const_expr>
+                                            <const>
+                                                <id>(v4, 58)
+                                        <id>(srcAddr, 61)
+                                    <const_expr>
+                                        <const>
+                                            <hex>(0x00000000, 1)
+                                <l_stmt>
+                                    <action_stmt>
+                                        <set_instruction>
+                                            <tgt_reg_acc_name>
+                                                <id>(IRF_IPV4_IP_SPECIAL, 55)
+                                            <const_expr>
+                                                <const>
+                                                    <int>(1, 1)
+                            <if_branch_l>
+                                <binop_expr>
+                                    <binop>(==)
+                                    <section_expr>
+                                        <field_expr>
+                                            <const_expr>
+                                                <const>
+                                                    <id>(v4, 58)
+                                            <id>(srcAddr, 61)
+                                        <const_expr>
+                                            <const>
+                                                <int>(31, 1)
+                                        <const_expr>
+                                            <const>
+                                                <int>(24, 1)
+                                    <const_expr>
+                                        <const>
+                                            <hex>(0x7f, 1)
+                                <l_stmt>
+                                    <action_stmt>
+                                        <set_instruction>
+                                            <tgt_reg_acc_name>
+                                                <id>(IRF_IPV4_SIP_LB, 56)
+                                            <const_expr>
+                                                <const>
+                                                    <int>(1, 1)
+                            <default_branch_l>(None)
+                    <l_stmt>
+                        <if_else_l_stmt>
+                            <if_branch_l>
+                                <binop_expr>
+                                    <binop>(==)
+                                    <field_expr>
+                                        <const_expr>
+                                            <const>
+                                                <id>(v4, 58)
+                                        <id>(dstAddr, 62)
+                                    <const_expr>
+                                        <const>
+                                            <hex>(0xffffffff, 1)
+                                <l_stmt>
+                                    <action_stmt>
+                                        <set_instruction>
+                                            <tgt_reg_acc_name>
+                                                <id>(IRF_IPV4_IP_SPECIAL, 55)
+                                            <const_expr>
+                                                <const>
+                                                    <int>(1, 1)
+                            <if_branch_l>
+                                <binop_expr>
+                                    <binop>(==)
+                                    <section_expr>
+                                        <field_expr>
+                                            <const_expr>
+                                                <const>
+                                                    <id>(v4, 58)
+                                            <id>(dstAddr, 62)
+                                        <const_expr>
+                                            <const>
+                                                <int>(31, 1)
+                                        <const_expr>
+                                            <const>
+                                                <int>(24, 1)
+                                    <const_expr>
+                                        <const>
+                                            <hex>(0x7f, 1)
+                                <l_stmt>
+                                    <action_stmt>
+                                        <set_instruction>
+                                            <tgt_reg_acc_name>
+                                                <id>(IRF_DIP_LB_MUL, 54)
+                                            <const_expr>
+                                                <const>
+                                                    <int>(1, 1)
+                            <if_branch_l>
+                                <binop_expr>
+                                    <binop>(==)
+                                    <section_expr>
+                                        <field_expr>
+                                            <const_expr>
+                                                <const>
+                                                    <id>(v4, 58)
+                                            <id>(dstAddr, 62)
+                                        <const_expr>
+                                            <const>
+                                                <int>(31, 1)
+                                        <const_expr>
+                                            <const>
+                                                <int>(8, 1)
+                                    <const_expr>
+                                        <const>
+                                            <hex>(0xe000000, 1)
+                                <l_stmt>
+                                    <action_stmt>
+                                        <set_instruction>
+                                            <tgt_reg_acc_name>
+                                                <id>(IRF_DIP_LB_MUL, 54)
+                                            <const_expr>
+                                                <const>
+                                                    <int>(2, 1)
+                            <if_branch_l>
+                                <binop_expr>
+                                    <binop>(==)
+                                    <section_expr>
+                                        <field_expr>
+                                            <const_expr>
+                                                <const>
+                                                    <id>(v4, 58)
+                                            <id>(dstAddr, 62)
+                                        <const_expr>
+                                            <const>
+                                                <int>(31, 1)
+                                        <const_expr>
+                                            <const>
+                                                <int>(28, 1)
+                                    <const_expr>
+                                        <const>
+                                            <hex>(0xe, 1)
+                                <l_stmt>
+                                    <action_stmt>
+                                        <set_instruction>
+                                            <tgt_reg_acc_name>
+                                                <id>(IRF_DIP_LB_MUL, 54)
+                                            <const_expr>
+                                                <const>
+                                                    <int>(4, 1)
+                            <default_branch_l>(None)
+                <cellb1_actions>
+                    <l_stmt>
+                        <if_else_l_stmt>
+                            <if_branch_l>
+                                <binop_expr>
+                                    <binop>(==)
+                                    <field_expr>
+                                        <const_expr>
+                                            <const>
+                                                <id>(v4, 58)
+                                        <id>(flagOffset, 63)
+                                    <const_expr>
+                                        <const>
+                                            <int>(0, 1)
+                                <l_stmt>
+                                    <if_else_l_stmt>
+                                        <if_branch_l>
+                                            <binop_expr>
+                                                <binop>(==)
+                                                <field_expr>
+                                                    <const_expr>
+                                                        <const>
+                                                            <id>(v4, 58)
+                                                    <id>(flags, 64)
+                                                <const_expr>
+                                                    <const>
+                                                        <int>(0, 1)
+                                            <l_stmt>
+                                                <action_stmt>
+                                                    <set_instruction>
+                                                        <tgt_reg_acc_name>
+                                                            <id>(IRF_IP_FRAG_STATUS, 57)
+                                                        <const_expr>
+                                                            <const>
+                                                                <int>(3, 1)
+                                        <default_branch_l>
+                                            <l_stmt>
+                                                <action_stmt>
+                                                    <set_instruction>
+                                                        <tgt_reg_acc_name>
+                                                            <id>(IRF_IP_FRAG_STATUS, 57)
+                                                        <const_expr>
+                                                            <const>
+                                                                <int>(1, 1)
+                            <default_branch_l>(None)
+    <decl>
+        <protocol_decl>
+            <protocol_id>
+                <id>(ethernet, 1)
+            <protocol>
+                <fields>
+                    <field>
+                        <id>(dmac, 46)
+                        <const>
+                            <int>(48, 1)
+                    <field>
+                        <id>(smac, 65)
+                        <const>
+                            <int>(48, 1)
+                    <field>
+                        <id>(etherType, 34)
+                        <const>
+                            <int>(16, 1)
+                    <no_option_field>
+                <p_stmt>
+                    <length>
+                        <const>
+                            <int>(14, 1)
+    <decl>
+        <protocol_decl>
+            <protocol_id>
+                <id>(ieee802-1qTag, 2)
+            <protocol>
+                <fields>
+                    <field>
+                        <id>(pcp, 35)
+                        <const>
+                            <int>(3, 1)
+                    <field>
+                        <id>(cfi, 36)
+                        <const>
+                            <int>(1, 1)
+                    <field>
+                        <id>(vid, 37)
+                        <const>
+                            <int>(12, 1)
+                    <field>
+                        <id>(etherType, 34)
+                        <const>
+                            <int>(16, 1)
+                    <no_option_field>
+                <p_stmt>
+                    <length>
+                        <const>
+                            <int>(4, 1)
+    <decl>
+        <protocol_decl>
+            <protocol_id>
+                <id>(ieee802-1OuterTag, 5)
+            <protocol>
+                <fields>
+                    <field>
+                        <id>(pcp_o, 40)
+                        <const>
+                            <int>(3, 1)
+                    <field>
+                        <id>(cfi_o, 41)
+                        <const>
+                            <int>(1, 1)
+                    <field>
+                        <id>(vid_o, 42)
+                        <const>
+                            <int>(12, 1)
+                    <field>
+                        <id>(etherType_o, 66)
+                        <const>
+                            <int>(16, 1)
+                    <field>
+                        <id>(pcp_i, 43)
+                        <const>
+                            <int>(3, 1)
+                    <field>
+                        <id>(cfi_i, 44)
+                        <const>
+                            <int>(1, 1)
+                    <field>
+                        <id>(vid_i, 45)
+                        <const>
+                            <int>(12, 1)
+                    <field>
+                        <id>(etherType_i, 39)
+                        <const>
+                            <int>(16, 1)
+                    <no_option_field>
+                <p_stmt>
+                    <length>
+                        <const>
+                            <int>(8, 1)
+    <decl>
+        <protocol_decl>
+            <protocol_id>
+                <id>(mpls, 4)
+            <protocol>
+                <fields>
+                    <field>
+                        <id>(lable, 67)
+                        <const>
+                            <int>(20, 1)
+                    <field>
+                        <id>(tc, 68)
+                        <const>
+                            <int>(3, 1)
+                    <field>
+                        <id>(s, 69)
+                        <const>
+                            <int>(1, 1)
+                    <field>
+                        <id>(ttl, 60)
+                        <const>
+                            <int>(8, 1)
+                    <no_option_field>
+                <p_stmt>
+                    <length>
+                        <const>
+                            <int>(4, 1)
+                <p_stmt>
+                    <if_else_p_stmt>
+                    <if_branch_p>
+                        <binop_expr>
+                            <binop>(==)
+                            <const_expr>
+                                <const>
+                                    <id>(s, 69)
+                            <const_expr>
+                                <const>
+                                    <int>(0, 1)
+                        <p_stmt>
+                            <next_header>
+                                <id>(mpls, 4)
+                    <no_default_branch_p>
+                <p_stmt>
+                    <action_stmt>
+
+    <decl>
+        <protocol_decl>
+            <protocol_id>
+                <id>(ipv4, 3)
+            <protocol>
+                <fields>
+                    <field>
+                        <id>(version, 70)
+                        <const>
+                            <int>(4, 1)
+                    <field>
+                        <id>(ihl, 71)
+                        <const>
+                            <int>(4, 1)
+                    <field>
+                        <id>(diffserv, 59)
+                        <const>
+                            <int>(8, 1)
+                    <field>
+                        <id>(totalLen, 72)
+                        <const>
+                            <int>(16, 1)
+                    <field>
+                        <id>(identificaiton, 73)
+                        <const>
+                            <int>(16, 1)
+                    <field>
+                        <id>(flags, 64)
+                        <const>
+                            <int>(3, 1)
+                    <field>
+                        <id>(fragOffset, 74)
+                        <const>
+                            <int>(13, 1)
+                    <field>
+                        <id>(ttl, 60)
+                        <const>
+                            <int>(8, 1)
+                    <field>
+                        <id>(theProtocol, 75)
+                        <const>
+                            <int>(8, 1)
+                    <field>
+                        <id>(hdrChecksum, 76)
+                        <const>
+                            <int>(16, 1)
+                    <field>
+                        <id>(srcAddr, 61)
+                        <const>
+                            <int>(32, 1)
+                    <field>
+                        <id>(dstAddr, 62)
+                        <const>
+                            <int>(32, 1)
+                    <option_field>
+                        <id>(options, 77)
+                        <const>
+                            <int>(0, 1)
+                <p_stmt>
+                    <if_else_p_stmt>
+                    <if_branch_p>
+                        <binop_expr>
+                            <binop>(==)
+                            <const_expr>
+                                <const>
+                                    <id>(ihl, 71)
+                            <const_expr>
+                                <const>
+                                    <int>(5, 1)
+                        <p_stmt>
+                            <length>
+                                <const>
+                                    <int>(20, 1)
+                        <p_stmt>
+                            <action_stmt>
+                                <set_instruction>
+                                    <tgt_reg_acc_name>
+                                        <tgt_reg_acc_name>
+                                            <id>(IRF_l3_type, 49)
+                                        <const_expr>
+                                            <const>
+                                                <int>(3, 1)
+                                    <const_expr>
+                                        <const>
+                                            <int>(0, 1)
+                    <if_branch_p>
+                        <binop_expr>
+                            <binop>(==)
+                            <const_expr>
+                                <const>
+                                    <id>(ihl, 71)
+                            <const_expr>
+                                <const>
+                                    <int>(6, 1)
+                        <p_stmt>
+                            <length>
+                                <const>
+                                    <int>(24, 1)
+                        <p_stmt>
+                            <action_stmt>
+                                <set_instruction>
+                                    <tgt_reg_acc_name>
+                                        <tgt_reg_acc_name>
+                                            <id>(IRF_l3_type, 49)
+                                        <const_expr>
+                                            <const>
+                                                <int>(3, 1)
+                                    <const_expr>
+                                        <const>
+                                            <int>(1, 1)
+                    <if_branch_p>
+                        <binop_expr>
+                            <binop>(==)
+                            <const_expr>
+                                <const>
+                                    <id>(ihl, 71)
+                            <const_expr>
+                                <const>
+                                    <int>(7, 1)
+                        <p_stmt>
+                            <length>
+                                <const>
+                                    <int>(28, 1)
+                        <p_stmt>
+                            <action_stmt>
+                                <set_instruction>
+                                    <tgt_reg_acc_name>
+                                        <tgt_reg_acc_name>
+                                            <id>(IRF_l3_type, 49)
+                                        <const_expr>
+                                            <const>
+                                                <int>(3, 1)
+                                    <const_expr>
+                                        <const>
+                                            <int>(1, 1)
+                    <default_branch_p>
+                        <p_stmt>
+                            <action_stmt>
+                                <set_instruction>
+                                    <tgt_reg_acc_name>
+                                        <id>(IRF_l3_cpu_code_8b, 78)
+                                    <const_expr>
+                                        <const>
+                                            <int>(2, 1)
+                <p_stmt>
+                    <if_else_p_stmt>
+                    <if_branch_p>
+                        <binop_expr>
+                            <binop>(==)
+                            <const_expr>
+                                <const>
+                                    <id>(theProtocol, 75)
+                            <const_expr>
+                                <const>
+                                    <int>(2, 1)
+                        <p_stmt>
+                            <next_header>
+                                <id>(igmp, 9)
+                        <p_stmt>
+                            <bypass>
+                                <const>
+                                    <int>(2, 1)
+                        <p_stmt>
+                            <action_stmt>
+                                <set_instruction>
+                                    <tgt_reg_acc_name>
+                                        <id>(IRF_l3_encode, 48)
+                                    <const_expr>
+                                        <const>
+                                            <int>(3, 1)
+                                <set_instruction>
+                                    <tgt_reg_acc_name>
+                                        <tgt_reg_acc_name>
+                                            <id>(IRF_l3_type, 49)
+                                        <const_expr>
+                                            <const>
+                                                <int>(1, 1)
+                                        <const_expr>
+                                            <const>
+                                                <int>(0, 1)
+                                    <const_expr>
+                                        <const>
+                                            <int>(0, 1)
+                                <set_instruction>
+                                    <tgt_reg_acc_name>
+                                        <id>(IRF_l3_protocol_flag_type_8b, 50)
+                                    <const_expr>
+                                        <const>
+                                            <int>(33, 1)
+                    <if_branch_p>
+                        <binop_expr>
+                            <binop>(==)
+                            <const_expr>
+                                <const>
+                                    <id>(theProtocol, 75)
+                            <const_expr>
+                                <const>
+                                    <int>(4, 1)
+                        <p_stmt>
+                            <next_header>
+                                <id>(ipv4, 3)
+                        <p_stmt>
+                            <bypass>
+                                <const>
+                                    <int>(0, 1)
+                        <p_stmt>
+                            <action_stmt>
+                                <set_instruction>
+                                    <tgt_reg_acc_name>
+                                        <id>(IRF_l3_encode, 48)
+                                    <const_expr>
+                                        <const>
+                                            <int>(7, 1)
+                                <set_instruction>
+                                    <tgt_reg_acc_name>
+                                        <tgt_reg_acc_name>
+                                            <id>(IRF_l3_type, 49)
+                                        <const_expr>
+                                            <const>
+                                                <int>(1, 1)
+                                        <const_expr>
+                                            <const>
+                                                <int>(0, 1)
+                                    <const_expr>
+                                        <const>
+                                            <int>(1, 1)
+                    <if_branch_p>
+                        <binop_expr>
+                            <binop>(==)
+                            <const_expr>
+                                <const>
+                                    <id>(theProtocol, 75)
+                            <const_expr>
+                                <const>
+                                    <int>(6, 1)
+                        <p_stmt>
+                            <next_header>
+                                <id>(tcp, 12)
+                        <p_stmt>
+                            <bypass>
+                                <const>
+                                    <int>(1, 1)
+                        <p_stmt>
+                            <action_stmt>
+                                <set_instruction>
+                                    <tgt_reg_acc_name>
+                                        <id>(IRF_l3_encode, 48)
+                                    <const_expr>
+                                        <const>
+                                            <int>(1, 1)
+                                <set_instruction>
+                                    <tgt_reg_acc_name>
+                                        <tgt_reg_acc_name>
+                                            <id>(IRF_l3_type, 49)
+                                        <const_expr>
+                                            <const>
+                                                <int>(1, 1)
+                                        <const_expr>
+                                            <const>
+                                                <int>(0, 1)
+                                    <const_expr>
+                                        <const>
+                                            <int>(2, 1)
+                    <if_branch_p>
+                        <binop_expr>
+                            <binop>(==)
+                            <const_expr>
+                                <const>
+                                    <id>(theProtocol, 75)
+                            <const_expr>
+                                <const>
+                                    <hex>(0x11, 1)
+                        <p_stmt>
+                            <next_header>
+                                <id>(udp, 13)
+                        <p_stmt>
+                            <bypass>
+                                <const>
+                                    <int>(1, 1)
+                        <p_stmt>
+                            <action_stmt>
+                                <set_instruction>
+                                    <tgt_reg_acc_name>
+                                        <id>(IRF_l3_encode, 48)
+                                    <const_expr>
+                                        <const>
+                                            <int>(0, 1)
+                                <set_instruction>
+                                    <tgt_reg_acc_name>
+                                        <tgt_reg_acc_name>
+                                            <id>(IRF_l3_type, 49)
+                                        <const_expr>
+                                            <const>
+                                                <int>(1, 1)
+                                        <const_expr>
+                                            <const>
+                                                <int>(0, 1)
+                                    <const_expr>
+                                        <const>
+                                            <int>(2, 1)
+                    <default_branch_p>
+                        <p_stmt>
+                            <action_stmt>
+                                <set_instruction>
+                                    <tgt_reg_acc_name>
+                                        <id>(IRF_l3_send_to_cpu_1b, 79)
+                                    <const_expr>
+                                        <const>
+                                            <int>(1, 1)

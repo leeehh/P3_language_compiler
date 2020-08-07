@@ -61,6 +61,8 @@ will generate beautify.ast or original.ast in the `test/` folder.
 
 * **Ling Li** - liling14(AT)tsinghua.org.cn
 
+* **Huanghua Li** - lihh18(AT)mails.tsinghua.org.cn
+
 * **Shengyuan Wang** - wwssyy(AT)tsinghua.edu.cn
 
 * **Huanghua Li** - lihh18(AT)mails.tsinghua.edu.cn

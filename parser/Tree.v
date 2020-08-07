@@ -46,7 +46,7 @@ with declaration :=
 
 (* <const_decl> *)
 with constant_declaration :=
-  | Constant_Declaration : identifier -> expression -> constant_declaration
+  | Constant_Declaration : identifier -> constant -> constant_declaration
 
 (* <const> *)
 with constant :=
@@ -194,10 +194,8 @@ with layer_default_branch :=
 (* <unop> *)
 with unary_operator :=
   | Unary_Int : unary_operator
-  | Unary_Hex : unary_operator
-  | Unary_Bit : unary_operator
   | Unary_Not : unary_operator
-  | Unary_Tilde : unary_operator
+  | Unary_Tilde : unary_operator 
 
 (* <binop> *)
 with binary_operator :=
@@ -220,6 +218,8 @@ with binary_operator :=
   | Binary_LesLes : binary_operator
   | Binary_GreGre : binary_operator
   | Binary_AddAdd : binary_operator
+  | Binary_Hex : binary_operator
+  | Binary_Bit : binary_operator
 
 (* <expr> *)
 with expression :=

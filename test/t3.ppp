@@ -38,10 +38,10 @@ l2 {
         IRF_pkt_type_3b = IRF[31:24];
         IRF_l2_protocol_flag_type_8b = IRF[39:32];
 
-        IRF_outer_vlan_high = IRF[199:192];
-        IRF_outer_vlan_low = IRF[207:200];
-        IRF_inner_vlan_high = IRF[215:208];
-        IRF_inner_vlan_low = IRF[223:216];
+        IRF_outer_vlan_high = IRF[107:100];
+        IRF_outer_vlan_low = IRF[99:92];
+        IRF_inner_vlan_high = IRF[123:116];
+        IRF_inner_vlan_low = IRF[115:108];
     }
 
     B0Registers {
@@ -62,7 +62,7 @@ l2 {
                   set IRF_tag_type_2b, 1;
                 set IRF_pkt_type_3b, 0;
             }
-        elseif ((eth.etherType == 0x88a8 || eth.etherType == 0x9200 || eth.etherType == 0x9300) && (qinq.ethertype_o == 0x8100) && (qinq.etherType_i == 0x0800))
+        elseif ((eth.etherType == 0x88a8 || eth.etherType == 0x9200 || eth.etherType == 0x9300) && (qinq.etherType_o == 0x8100) && (qinq.etherType_i == 0x0800))
             length = length(eth) + length(qinq);
             next_header = ipv4;
             bypass = 1;
@@ -79,13 +79,6 @@ l2 {
             action = {
                 set IRF_tag_type_2b, 0;
                 set IRF_pkt_type_3b, 0;
-            }
-        elseif (eth.etherType == 0x88CC)                                              
-            length = length(eth);
-            next_header = lldp;
-            bypass = 2;
-            action = {
-                 set IRF_l2_protocol_flag_type_8b, 66;
             }
         else
             bypass = 2;
@@ -108,66 +101,6 @@ l2 {
 
 l2s {
 
-}
-
-l3{
-    ARegisters {
-        IRF_l3_send_to_cpu_8b = IRF[7:0];
-        IRF_l3_encode = IRF[15:8];
-        IRF_l3_type = IRF[23:16];
-        IRF_l3_protocol_flag_type_8b = IRF[31:24];
-
-        IRF_TOS_8b = IRF[199:192];
-        IRF_ttl_8b = IRF[207:200];
-
-        IRF_TTL_EXP = IRF[391:384];
-    }
-
-    B0Registers {
-        IRF_DIP_LB_MUL = IRF[7:0];
-        IRF_IPV4_IP_SPECIAL = IRF[15:8];
-        IRF_IPV4_SIP_LB = IRF[23:16];
-    }
-
-    B1Registers {
-        IRF_IP_FRAG_STATUS = IRF[7:0];
-    }
-    
-    ipv4 v4;
-
-    cellA {
-        mov IRF_TOS_8b, v4.diffserv;
-        mov IRF_ttl_8b, v4.ttl;
-        lg IRF_TTL_EXP, 2, v4.ttl;
-    }
-        
-    cellB0 {
-        if (v4.srcAddr == 0x00000000)
-            set IRF_IPV4_IP_SPECIAL, 1;
-        elseif (v4.srcAddr[31:24] == 0x7f)
-            set IRF_IPV4_SIP_LB, 1;
-        endif
-            
-        if (v4.dstAddr == 0xffffffff)
-            set IRF_IPV4_IP_SPECIAL, 1;
-        elseif (v4.dstAddr[31:24] == 0x7f)
-            set IRF_DIP_LB_MUL, 1;
-        elseif (v4.dstAddr[31:8] == 0xe000000)
-            set IRF_DIP_LB_MUL, 2;
-        elseif (v4.dstAddr[31:28] == 0xe)
-            set IRF_DIP_LB_MUL, 4;            
-        endif
-    }
-        
-    cellB1 {            
-        if (v4.flagOffset == 0)
-            if (v4.flags == 0)
-                set IRF_IP_FRAG_STATUS, 3;
-            else
-                set IRF_IP_FRAG_STATUS, 1;
-            endif
-        endif
-    }
 }
 
 protocol ethernet {

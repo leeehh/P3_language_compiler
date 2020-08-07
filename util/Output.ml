@@ -1,7 +1,13 @@
 open Format
 
 let write_ast filepath ast_content =
-  let channel = open_out (filepath ^ ".ast") in
-  fprintf (formatter_of_out_channel channel) "%s\n" ast_content;
-  close_out channel
+  let ast_channel = open_out (filepath ^ ".ast") in
+  fprintf (formatter_of_out_channel ast_channel) "%s\n" ast_content;
+  close_out ast_channel
+;;
+
+let write_asm filepath asm_content =
+  let asm_channel = open_out (filepath ^ ".asm") in
+  fprintf (formatter_of_out_channel asm_channel) "%s\n" asm_content;
+  close_out asm_channel
 ;;

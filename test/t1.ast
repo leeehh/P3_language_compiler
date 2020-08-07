@@ -1,0 +1,542 @@
+<parser>
+    <layer_reg_len>
+        <const>
+            <int>(72, 1)
+    <cell_reg_len>
+        <const>
+            <int>(24, 1)
+    <protocol_set>
+        <id>(ethernet, 1)
+        <id>(ieee802-1qTag, 2)
+        <id>(ipv4, 3)
+        <id>(mpls, 4)
+        <id>(ieee802-1OuterTag, 5)
+        <id>(lldp, 6)
+        <id>(trill, 7)
+        <id>(qcn, 8)
+        <id>(igmp, 9)
+        <id>(ospf, 10)
+        <id>(pim, 11)
+        <id>(tcp, 12)
+        <id>(udp, 13)
+    <layer_set>
+        <id>(l2, 14)
+        <id>(l2s, 15)
+        <id>(l3, 16)
+        <id>(l3s, 17)
+        <id>(l4, 18)
+    <decl>
+        <const_decl>
+            <id>(global_IRF_len, 19)
+            <const>
+                <int>(64, 1)
+    <decl>
+        <reg_acc_set>
+            <reg_acc_name>
+                <id>(IRF_gp_reg0_2b, 20)
+            <binop_expr>
+                <binop>(+)
+                <const_expr>
+                    <const>
+                        <id>(global_IRF_len, 19)
+                <const_expr>
+                    <const>
+                        <int>(1, 1)
+            <const_expr>
+                <const>
+                    <id>(global_IRF_len, 19)
+    <decl>
+        <reg_acc_set>
+            <reg_acc_name>
+                <id>(IRF_gp_reg1_2b, 21)
+            <binop_expr>
+                <binop>(+)
+                <const_expr>
+                    <const>
+                        <id>(global_IRF_len, 19)
+                <const_expr>
+                    <const>
+                        <int>(3, 1)
+            <binop_expr>
+                <binop>(+)
+                <const_expr>
+                    <const>
+                        <id>(global_IRF_len, 19)
+                <const_expr>
+                    <const>
+                        <int>(2, 1)
+    <decl>
+        <layer_action>
+            <id>(l2, 14)
+            <local_reg_decl>
+                <cella_regs>
+
+                <cellb0_regs>
+
+                <cellb1_regs>(None)
+
+            <l_actions>
+                <cella_actions>
+
+                <cellb0_actions>
+
+                <cellb1_actions>(None)
+    <decl>
+        <layer_action>
+            <id>(l2s, 15)
+            <local_reg_decl>
+                <cella_regs>(None)
+                <cellb0_regs>(None)
+                <cellb1_regs>(None)
+
+            <l_actions>
+                <cella_actions>(None)
+                <cellb0_actions>(None)
+                <cellb1_actions>(None)
+    <decl>
+        <protocol_decl>
+            <protocol_id>
+                <id>(ethernet, 1)
+            <protocol>
+                <fields>
+                    <field>
+                        <id>(dmac, 22)
+                        <const>
+                            <int>(48, 1)
+                    <field>
+                        <id>(smac, 23)
+                        <const>
+                            <int>(48, 1)
+                    <field>
+                        <id>(etherType, 24)
+                        <const>
+                            <int>(16, 1)
+                    <no_option_field>
+                <p_stmt>
+                    <length>
+                        <const>
+                            <int>(14, 1)
+    <decl>
+        <protocol_decl>
+            <protocol_id>
+                <id>(ieee802-1qTag, 2)
+            <protocol>
+                <fields>
+                    <field>
+                        <id>(pcp, 25)
+                        <const>
+                            <int>(3, 1)
+                    <field>
+                        <id>(cfi, 26)
+                        <const>
+                            <int>(1, 1)
+                    <field>
+                        <id>(vid, 27)
+                        <const>
+                            <int>(12, 1)
+                    <field>
+                        <id>(etherType, 24)
+                        <const>
+                            <int>(16, 1)
+                    <no_option_field>
+                <p_stmt>
+                    <length>
+                        <const>
+                            <int>(4, 1)
+    <decl>
+        <protocol_decl>
+            <protocol_id>
+                <id>(ieee802-1OuterTag, 5)
+            <protocol>
+                <fields>
+                    <field>
+                        <id>(pcp_o, 28)
+                        <const>
+                            <int>(3, 1)
+                    <field>
+                        <id>(cfi_o, 29)
+                        <const>
+                            <int>(1, 1)
+                    <field>
+                        <id>(vid_o, 30)
+                        <const>
+                            <int>(12, 1)
+                    <field>
+                        <id>(etherType_o, 31)
+                        <const>
+                            <int>(16, 1)
+                    <field>
+                        <id>(pcp_i, 32)
+                        <const>
+                            <int>(3, 1)
+                    <field>
+                        <id>(cfi_i, 33)
+                        <const>
+                            <int>(1, 1)
+                    <field>
+                        <id>(vid_i, 34)
+                        <const>
+                            <int>(12, 1)
+                    <field>
+                        <id>(etherType_i, 35)
+                        <const>
+                            <int>(16, 1)
+                    <no_option_field>
+                <p_stmt>
+                    <length>
+                        <const>
+                            <int>(8, 1)
+    <decl>
+        <protocol_decl>
+            <protocol_id>
+                <id>(mpls, 4)
+            <protocol>
+                <fields>
+                    <field>
+                        <id>(lable, 36)
+                        <const>
+                            <int>(20, 1)
+                    <field>
+                        <id>(tc, 37)
+                        <const>
+                            <int>(3, 1)
+                    <field>
+                        <id>(s, 38)
+                        <const>
+                            <int>(1, 1)
+                    <field>
+                        <id>(ttl, 39)
+                        <const>
+                            <int>(8, 1)
+                    <no_option_field>
+                <p_stmt>
+                    <length>
+                        <const>
+                            <int>(4, 1)
+                <p_stmt>
+                    <if_else_p_stmt>
+                    <if_branch_p>
+                        <binop_expr>
+                            <binop>(==)
+                            <const_expr>
+                                <const>
+                                    <id>(s, 38)
+                            <const_expr>
+                                <const>
+                                    <int>(0, 1)
+                        <p_stmt>
+                            <next_header>
+                                <id>(mpls, 4)
+                    <no_default_branch_p>
+                <p_stmt>
+                    <action_stmt>
+
+    <decl>
+        <protocol_decl>
+            <protocol_id>
+                <id>(ipv4, 3)
+            <protocol>
+                <fields>
+                    <field>
+                        <id>(version, 40)
+                        <const>
+                            <int>(4, 1)
+                    <field>
+                        <id>(ihl, 41)
+                        <const>
+                            <int>(4, 1)
+                    <field>
+                        <id>(diffserv, 42)
+                        <const>
+                            <int>(8, 1)
+                    <field>
+                        <id>(totalLen, 43)
+                        <const>
+                            <int>(16, 1)
+                    <field>
+                        <id>(identificaiton, 44)
+                        <const>
+                            <int>(16, 1)
+                    <field>
+                        <id>(flags, 45)
+                        <const>
+                            <int>(3, 1)
+                    <field>
+                        <id>(fragOffset, 46)
+                        <const>
+                            <int>(13, 1)
+                    <field>
+                        <id>(ttl, 39)
+                        <const>
+                            <int>(8, 1)
+                    <field>
+                        <id>(theProtocol, 47)
+                        <const>
+                            <int>(8, 1)
+                    <field>
+                        <id>(hdrChecksum, 48)
+                        <const>
+                            <int>(16, 1)
+                    <field>
+                        <id>(srcAddr, 49)
+                        <const>
+                            <int>(32, 1)
+                    <field>
+                        <id>(dstAddr, 50)
+                        <const>
+                            <int>(32, 1)
+                    <option_field>
+                        <id>(options, 51)
+                        <const>
+                            <int>(0, 1)
+                <p_stmt>
+                    <if_else_p_stmt>
+                    <if_branch_p>
+                        <binop_expr>
+                            <binop>(==)
+                            <const_expr>
+                                <const>
+                                    <id>(ihl, 41)
+                            <const_expr>
+                                <const>
+                                    <int>(5, 1)
+                        <p_stmt>
+                            <length>
+                                <const>
+                                    <int>(20, 1)
+                        <p_stmt>
+                            <action_stmt>
+                                <set_instruction>
+                                    <tgt_reg_acc_name>
+                                        <tgt_reg_acc_name>
+                                            <id>(IRF_l3_type, 52)
+                                        <const_expr>
+                                            <const>
+                                                <int>(3, 1)
+                                    <const_expr>
+                                        <const>
+                                            <int>(0, 1)
+                    <if_branch_p>
+                        <binop_expr>
+                            <binop>(==)
+                            <const_expr>
+                                <const>
+                                    <id>(ihl, 41)
+                            <const_expr>
+                                <const>
+                                    <int>(6, 1)
+                        <p_stmt>
+                            <length>
+                                <const>
+                                    <int>(24, 1)
+                        <p_stmt>
+                            <action_stmt>
+                                <set_instruction>
+                                    <tgt_reg_acc_name>
+                                        <tgt_reg_acc_name>
+                                            <id>(IRF_l3_type, 52)
+                                        <const_expr>
+                                            <const>
+                                                <int>(3, 1)
+                                    <const_expr>
+                                        <const>
+                                            <int>(1, 1)
+                    <if_branch_p>
+                        <binop_expr>
+                            <binop>(==)
+                            <const_expr>
+                                <const>
+                                    <id>(ihl, 41)
+                            <const_expr>
+                                <const>
+                                    <int>(7, 1)
+                        <p_stmt>
+                            <length>
+                                <const>
+                                    <int>(28, 1)
+                        <p_stmt>
+                            <action_stmt>
+                                <set_instruction>
+                                    <tgt_reg_acc_name>
+                                        <tgt_reg_acc_name>
+                                            <id>(IRF_l3_type, 52)
+                                        <const_expr>
+                                            <const>
+                                                <int>(3, 1)
+                                    <const_expr>
+                                        <const>
+                                            <int>(1, 1)
+                    <default_branch_p>
+                        <p_stmt>
+                            <action_stmt>
+                                <set_instruction>
+                                    <tgt_reg_acc_name>
+                                        <id>(IRF_l3_cpu_code_8b, 53)
+                                    <const_expr>
+                                        <const>
+                                            <int>(2, 1)
+                <p_stmt>
+                    <if_else_p_stmt>
+                    <if_branch_p>
+                        <binop_expr>
+                            <binop>(==)
+                            <const_expr>
+                                <const>
+                                    <id>(theProtocol, 47)
+                            <const_expr>
+                                <const>
+                                    <int>(2, 1)
+                        <p_stmt>
+                            <next_header>
+                                <id>(igmp, 9)
+                        <p_stmt>
+                            <bypass>
+                                <const>
+                                    <int>(2, 1)
+                        <p_stmt>
+                            <action_stmt>
+                                <set_instruction>
+                                    <tgt_reg_acc_name>
+                                        <id>(IRF_l3_encode, 54)
+                                    <const_expr>
+                                        <const>
+                                            <int>(3, 1)
+                                <set_instruction>
+                                    <tgt_reg_acc_name>
+                                        <tgt_reg_acc_name>
+                                            <id>(IRF_l3_type, 52)
+                                        <const_expr>
+                                            <const>
+                                                <int>(1, 1)
+                                        <const_expr>
+                                            <const>
+                                                <int>(0, 1)
+                                    <const_expr>
+                                        <const>
+                                            <int>(0, 1)
+                                <set_instruction>
+                                    <tgt_reg_acc_name>
+                                        <id>(IRF_l3_protocol_flag_type_8b, 55)
+                                    <const_expr>
+                                        <const>
+                                            <int>(33, 1)
+                    <if_branch_p>
+                        <binop_expr>
+                            <binop>(==)
+                            <const_expr>
+                                <const>
+                                    <id>(theProtocol, 47)
+                            <const_expr>
+                                <const>
+                                    <int>(4, 1)
+                        <p_stmt>
+                            <next_header>
+                                <id>(ipv4, 3)
+                        <p_stmt>
+                            <bypass>
+                                <const>
+                                    <int>(0, 1)
+                        <p_stmt>
+                            <action_stmt>
+                                <set_instruction>
+                                    <tgt_reg_acc_name>
+                                        <id>(IRF_l3_encode, 54)
+                                    <const_expr>
+                                        <const>
+                                            <int>(7, 1)
+                                <set_instruction>
+                                    <tgt_reg_acc_name>
+                                        <tgt_reg_acc_name>
+                                            <id>(IRF_l3_type, 52)
+                                        <const_expr>
+                                            <const>
+                                                <int>(1, 1)
+                                        <const_expr>
+                                            <const>
+                                                <int>(0, 1)
+                                    <const_expr>
+                                        <const>
+                                            <int>(1, 1)
+                    <if_branch_p>
+                        <binop_expr>
+                            <binop>(==)
+                            <const_expr>
+                                <const>
+                                    <id>(theProtocol, 47)
+                            <const_expr>
+                                <const>
+                                    <int>(6, 1)
+                        <p_stmt>
+                            <next_header>
+                                <id>(tcp, 12)
+                        <p_stmt>
+                            <bypass>
+                                <const>
+                                    <int>(1, 1)
+                        <p_stmt>
+                            <action_stmt>
+                                <set_instruction>
+                                    <tgt_reg_acc_name>
+                                        <id>(IRF_l3_encode, 54)
+                                    <const_expr>
+                                        <const>
+                                            <int>(1, 1)
+                                <set_instruction>
+                                    <tgt_reg_acc_name>
+                                        <tgt_reg_acc_name>
+                                            <id>(IRF_l3_type, 52)
+                                        <const_expr>
+                                            <const>
+                                                <int>(1, 1)
+                                        <const_expr>
+                                            <const>
+                                                <int>(0, 1)
+                                    <const_expr>
+                                        <const>
+                                            <int>(2, 1)
+                    <if_branch_p>
+                        <binop_expr>
+                            <binop>(==)
+                            <const_expr>
+                                <const>
+                                    <id>(theProtocol, 47)
+                            <const_expr>
+                                <const>
+                                    <hex>(0x11, 1)
+                        <p_stmt>
+                            <next_header>
+                                <id>(udp, 13)
+                        <p_stmt>
+                            <bypass>
+                                <const>
+                                    <int>(1, 1)
+                        <p_stmt>
+                            <action_stmt>
+                                <set_instruction>
+                                    <tgt_reg_acc_name>
+                                        <id>(IRF_l3_encode, 54)
+                                    <const_expr>
+                                        <const>
+                                            <int>(0, 1)
+                                <set_instruction>
+                                    <tgt_reg_acc_name>
+                                        <tgt_reg_acc_name>
+                                            <id>(IRF_l3_type, 52)
+                                        <const_expr>
+                                            <const>
+                                                <int>(1, 1)
+                                        <const_expr>
+                                            <const>
+                                                <int>(0, 1)
+                                    <const_expr>
+                                        <const>
+                                            <int>(2, 1)
+                    <default_branch_p>
+                        <p_stmt>
+                            <action_stmt>
+                                <set_instruction>
+                                    <tgt_reg_acc_name>
+                                        <id>(IRF_l3_send_to_cpu_1b, 56)
+                                    <const_expr>
+                                        <const>
+                                            <int>(1, 1)

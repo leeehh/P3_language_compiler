@@ -1,0 +1,180 @@
+lreglen = 72 bytes;
+
+creglen = 24 bytes;
+
+pset = { 
+    ethernet,
+    ieee802-1qTag,
+    ipv4,
+    mpls,
+    ieee802-1OuterTag,
+    lldp,
+    trill,
+    qcn,
+    igmp,
+    ospf,
+    pim,
+    tcp,
+    udp
+};
+
+lset = {  
+    l2,
+    l2s,
+    l3,
+    l3s,
+    l4
+};
+
+const global_IRF_len = 64;
+
+IRF_gp_reg0_2b = IRF[global_IRF_len+1:global_IRF_len];
+IRF_gp_reg1_2b = IRF[global_IRF_len+3:global_IRF_len+2];
+
+l2 {
+    ARegisters {
+        IRF_l2_send_to_cpu_8b = IRF[15:8];
+        IRF_tag_type_2b = IRF[23:16];
+        IRF_pkt_type_3b = IRF[31:24];
+        IRF_l2_protocol_flag_type_8b = IRF[39:32];
+
+        IRF_outer_vlan_high = IRF[50:40];
+  
+    }
+
+
+    ethernet eth;
+    ieee802-1qTag vlan;
+    ieee802-1OuterTag qinq;
+
+   cellA {
+
+    }
+            
+}
+
+protocol ethernet {
+    fields = {
+        dmac : 48;
+        smac : 48;
+        etherType : 16;
+    }
+
+    length = 14;
+}
+
+protocol ieee802-1qTag {
+    fields = {
+        pcp : 3;
+        cfi : 1;
+        vid : 12;
+        etherType : 16;
+    }
+
+    length = 4;
+}
+
+protocol ieee802-1OuterTag {
+    fields = {
+        pcp_o : 3;
+        cfi_o : 1;
+        vid_o : 12;
+        etherType_o : 16;
+        pcp_i : 3;
+        cfi_i : 1;
+        vid_i : 12;
+        etherType_i : 16;
+    }
+
+    length = 8;
+}
+
+protocol mpls {
+    fields = {
+        lable : 20;
+        tc : 3;
+        s : 1;
+        ttl : 8;
+    }
+
+    length = 4;
+    
+    if (s == 0)
+        next_header = mpls;
+    endif
+    
+    action = {
+    }
+}
+
+protocol ipv4 {
+    fields = {
+        version : 4;
+        ihl : 4;
+        diffserv : 8;
+        totalLen : 16;
+        identificaiton : 16;
+        flags : 3;
+        fragOffset : 13;
+        ttl : 8;
+        theProtocol : 8;
+        hdrChecksum : 16;
+        srcAddr : 32;
+        dstAddr : 32;
+        options : *;
+    }
+
+    if (ihl == 5)
+        length = 20;
+        action = { 
+            set IRF_l3_type[3], 0;
+        }
+    elseif (ihl == 6)
+        length = 24;
+        action = { 
+            set IRF_l3_type[3], 1;
+        }
+    elseif (ihl == 7)
+        length = 28;
+        action = {
+            set IRF_l3_type[3], 1;
+        }
+    else
+        action = {
+            set IRF_l3_cpu_code_8b, 2;
+        }
+    endif
+    
+    if (theProtocol == 2)
+        next_header = igmp;
+        bypass = 2;
+        action = {
+            set IRF_l3_encode, 3;
+            set IRF_l3_type[1:0], 0;
+            set IRF_l3_protocol_flag_type_8b, 33;
+        }
+    elseif (theProtocol == 4)
+        next_header = ipv4;
+        bypass = 0;
+        action = {
+            set IRF_l3_encode, 7;
+              set IRF_l3_type[1:0], 1;
+        }    
+    elseif (theProtocol == 6)
+        next_header = tcp;
+        bypass = 1;
+        action = { 
+            set IRF_l3_encode, 1;
+              set IRF_l3_type[1:0], 2;
+        }
+    elseif (theProtocol == 0x11)
+        next_header = udp;
+        bypass = 1;
+        action = { 
+              set IRF_l3_encode, 0;
+              set IRF_l3_type[1:0], 2;
+        }
+    else
+        set IRF_l3_send_to_cpu_1b, 1;
+    endif
+}

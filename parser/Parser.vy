@@ -145,7 +145,7 @@ id_list:
 (* <IDENT> *)
 identifier:
   | v1 = IDENT
-    { {| name := v1; key := xH |} }
+    { {| name := v1; key := intern_string v1 |} }
   ;
 
 (* <layer_set> *)
@@ -176,14 +176,14 @@ declaration:
 
 (* <const_decl> *)
 constant_declaration:
-  | CONST; v1 = identifier; EQ; v2 = expression; SEMICOLON
+  | CONST; v1 = identifier; EQ; v2 = constant; SEMICOLON
     { Constant_Declaration v1 v2 }
   ;
 
 (* <const> *)
 constant:
   | v1 = IDENT
-    { Const_Identifier {| name := v1; key := xH |} }
+    { Const_Identifier {| name := v1; key := intern_string v1 |} }
   | v1 = CONST_INT
     { Const_Int {| name := v1; key := xH |} }
   | v1 = CONST_HEX
@@ -227,7 +227,7 @@ field:
 (* <option_field> *)
 optional_field:
   | OPTIONS; COLON; MUL; SEMICOLON;
-    { Optional_Field {| name := ocaml_string "options"; key := xH |} ( Const_Int {| name := ocaml_string "0"; key := xH |} ) }
+    { Optional_Field {| name := ocaml_string "options"; key := intern_string "options" |} ( Const_Int {| name := ocaml_string "0"; key := xH |} ) }
   | (* empty *)
     { No_Optional_Field }
   ;
@@ -245,7 +245,7 @@ protocol_statement:
   | v1 = protocol_if_statement
     { Protocol_If v1 }
   | NEXT_HEADER; EQ; v1 = IDENT; SEMICOLON
-    { Protocol_Next_Header {| name := v1; key := xH |} }
+    { Protocol_Next_Header {| name := v1; key := intern_string v1 |} }
   | LENGTH; EQ; v1 = constant; SEMICOLON
     { Protocol_Length v1 }
   | BYPASS; EQ; v1 = constant; SEMICOLON
@@ -440,7 +440,7 @@ layer_statement:
   | BYPASS; EQ; v1 = constant; SEMICOLON
     { Layer_Bypass v1 }
   | NEXT_HEADER; EQ; v1 = IDENT; SEMICOLON
-    { Layer_Next_Header {| name := v1; key := xH |} }
+    { Layer_Next_Header {| name := v1; key := intern_string v1 |} }
   | LENGTH; EQ; v1 = expression; SEMICOLON
     { Layer_Length v1 }
   | v1 = action_statement
@@ -579,12 +579,10 @@ concatenation_expression:
 cast_expression:
   | v1 = unary_expression
     { v1 }
-  | HEXADECIMAL; v1 = cast_expression
-    { Unary_Expression Unary_Hex v1 }
-  | INT; v1 = cast_expression
-    { Unary_Expression Unary_Int v1 }
-  | BITS; v1 = cast_expression
-    { Unary_Expression Unary_Bit v1 }
+  | v1 = cast_expression; HEXADECIMAL; v2 = unary_expression
+    { Binary_Expression Binary_Hex v1 v2 }
+  | v1 = cast_expression; BITS; v2 = unary_expression
+    { Binary_Expression Binary_Bit v1 v2 }
   ;
 
 unary_expression:
@@ -594,6 +592,8 @@ unary_expression:
     { Unary_Expression  Unary_Tilde v1 }
   | NOT; v1 = unary_expression
     { Unary_Expression Unary_Not v1 }
+  | INT; v1 = unary_expression
+    { Unary_Expression Unary_Int v1 }
   ;
 
 postfix_expression:

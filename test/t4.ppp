@@ -38,10 +38,10 @@ l2 {
         IRF_pkt_type_3b = IRF[31:24];
         IRF_l2_protocol_flag_type_8b = IRF[39:32];
 
-        IRF_outer_vlan_high = IRF[199:192];
-        IRF_outer_vlan_low = IRF[207:200];
-        IRF_inner_vlan_high = IRF[215:208];
-        IRF_inner_vlan_low = IRF[223:216];
+        IRF_outer_vlan_high = IRF[107:100]; 
+        IRF_outer_vlan_low = IRF[99:92];
+        IRF_inner_vlan_high = IRF[123:116];
+        IRF_inner_vlan_low = IRF[115:108];
     }
 
     B0Registers {
@@ -62,7 +62,7 @@ l2 {
                   set IRF_tag_type_2b, 1;
                 set IRF_pkt_type_3b, 0;
             }
-        elseif ((eth.etherType == 0x88a8 || eth.etherType == 0x9200 || eth.etherType == 0x9300) && (qinq.ethertype_o == 0x8100) && (qinq.etherType_i == 0x0800))
+        elseif ((eth.etherType == 0x88a8 || eth.etherType == 0x9200 || eth.etherType == 0x9300) && (qinq.etherType_o == 0x8100) && (qinq.etherType_i == 0x0800))
             length = length(eth) + length(qinq);
             next_header = ipv4;
             bypass = 1;
@@ -79,13 +79,6 @@ l2 {
             action = {
                 set IRF_tag_type_2b, 0;
                 set IRF_pkt_type_3b, 0;
-            }
-        elseif (eth.etherType == 0x88CC)                                              
-            length = length(eth);
-            next_header = lldp;
-            bypass = 2;
-            action = {
-                 set IRF_l2_protocol_flag_type_8b, 66;
             }
         else
             bypass = 2;
@@ -117,10 +110,10 @@ l3{
         IRF_l3_type = IRF[23:16];
         IRF_l3_protocol_flag_type_8b = IRF[31:24];
 
-        IRF_TOS_8b = IRF[199:192];
-        IRF_ttl_8b = IRF[207:200];
+        IRF_TOS_8b = IRF[99:92];
+        IRF_ttl_8b = IRF[107:100];
 
-        IRF_TTL_EXP = IRF[391:384];
+        IRF_TTL_EXP = IRF[191:184];
     }
 
     B0Registers {
@@ -232,7 +225,7 @@ protocol ipv4 {
         totalLen : 16;
         identificaiton : 16;
         flags : 3;
-        fragOffset : 13;
+        flagOffset : 13;
         ttl : 8;
         theProtocol : 8;
         hdrChecksum : 16;
@@ -262,15 +255,7 @@ protocol ipv4 {
         }
     endif
     
-    if (theProtocol == 2)
-        next_header = igmp;
-        bypass = 2;
-        action = {
-            set IRF_l3_encode, 3;
-            set IRF_l3_type[1:0], 0;
-            set IRF_l3_protocol_flag_type_8b, 33;
-        }
-    elseif (theProtocol == 4)
+    if (theProtocol == 4)
         next_header = ipv4;
         bypass = 0;
         action = {
