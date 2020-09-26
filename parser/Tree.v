@@ -61,7 +61,7 @@ with protocol_declaration :=
 
 (* <protocol> *)
 with protocol :=
-  | Protocol : fields -> list protocol_statement -> protocol
+  | Protocol : fields -> protocol_statement -> protocol
 
 (* <fields> *)
 with fields :=
@@ -76,30 +76,38 @@ with optional_field :=
   | Optional_Field : identifier -> constant -> optional_field
   | No_Optional_Field : optional_field
 
-(* <p_stmt> *)
+(* <p_stmts> *)
 with protocol_statement :=
-  | Protocol_If : protocol_if_statement -> protocol_statement
-  | Protocol_Next_Header : identifier -> protocol_statement
-  | Protocol_Length : constant -> protocol_statement
-  | Protocol_Bypass : constant -> protocol_statement
-  | Protocol_Action : action_statement -> protocol_statement
+  | Protocol_Statement : list select_statement -> protocol_statement
 
-(* <if_else_p_stmt> *)
-with protocol_if_statement :=
-  | Protocol_If_Statement : list protocol_if_branch -> protocol_default_branch -> protocol_if_statement
 
-(* <if_branch_p> *)
-with protocol_if_branch :=
-  | Protocol_If_Branch : expression -> list protocol_statement -> protocol_if_branch
+(* <if_else_stmt> *)
+with select_statement :=
+  | As_If : if_statement -> select_statement
+  | As_Simple : statement -> select_statement
 
-(* <default_branch_p> *)
-with protocol_default_branch :=
-  | Protocol_Default_Branch : list protocol_statement -> protocol_default_branch
-  | Protocol_No_Default_Branch : protocol_default_branch
+(* <if_else_stmt> *)
+with if_statement :=
+  | If_Statement : list if_branch -> else_branch -> if_statement
+
+(* <if_branch> *)
+with if_branch :=
+  | If_Branch : expression -> list statement -> if_branch
+
+(* <else_branch> *)
+with else_branch :=
+  | Else_Branch : list statement -> else_branch
+
+(* <stmt> *)
+with statement :=
+  | Next_Header_Statement : identifier -> statement
+  | Length_Statement : expression -> statement
+  | Bypass_Statement : constant -> statement
+  | Action_Statement : action_statement -> statement
 
 (* <action_stmt> *)
 with action_statement :=
-  | Action_Statement : list instruction -> action_statement
+  | Act_Statement : list instruction -> action_statement
 
 (* <instruction> *)
 with instruction :=
@@ -139,17 +147,14 @@ with local_register_declaration :=
 (* <cella_regs> *)
 with cell_a_register :=
   | Cell_A_Register : list register_access_set -> cell_a_register
-  | No_Cell_A_Register : cell_a_register
 
 (* <cellb0_regs> *)
 with cell_b0_register :=
   | Cell_B0_Register : list register_access_set -> cell_b0_register
-  | No_Cell_B0_Register : cell_b0_register
 
 (* <cellb1_regs> *)
 with cell_b1_register :=
   | Cell_B1_Register : list register_access_set -> cell_b1_register
-  | No_Cell_B1_Register : cell_b1_register
 
 (* <l_actions> *)
 with local_action :=
@@ -157,39 +162,19 @@ with local_action :=
 
 (* <cella_actions> *)
 with cell_a_action :=
-  | Cell_A_Action : list layer_statement -> cell_a_action
-  | No_Cell_A_Action : cell_a_action
+  | Cell_A_Action : layer_statement -> cell_a_action
 
 (* <cellb_actions> *)
 with cell_b0_action :=
-  | Cell_B0_Action : list layer_statement -> cell_b0_action
-  | No_Cell_B0_Action : cell_b0_action
+  | Cell_B0_Action : layer_statement -> cell_b0_action
 
 (* <cellb1_actions> *)
 with cell_b1_action :=
-  | Cell_B1_Action : list layer_statement -> cell_b1_action
-  | No_Cell_B1_Action : cell_b1_action
+  | Cell_B1_Action : layer_statement -> cell_b1_action
 
-(* <l_stmt> *)
+(* <l_stmts> *)
 with layer_statement :=
-  | Layer_If : layer_if_statement -> layer_statement
-  | Layer_Bypass : constant -> layer_statement
-  | Layer_Next_Header : identifier -> layer_statement
-  | Layer_Length : expression -> layer_statement
-  | Layer_As_Action : action_statement -> layer_statement
-
-(* <if_else_l_stmt> *)
-with layer_if_statement :=
-  | Layer_If_Statement : list layer_if_branch -> layer_default_branch -> layer_if_statement
-
-(* <if_branch_l> *)
-with layer_if_branch :=
-  | Layer_If_Branch : expression -> list layer_statement -> layer_if_branch
-
-(* <default_branch_l> *)
-with layer_default_branch :=
-  | Layer_Default_Branch : list layer_statement -> layer_default_branch
-  | Layer_No_Default_Branch : layer_default_branch
+  | Layer_Statement : list select_statement -> layer_statement
 
 (* <unop> *)
 with unary_operator :=

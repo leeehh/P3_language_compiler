@@ -43,14 +43,15 @@ COMMON=Errors.v AST.v Events.v Globalenvs.v Memdata.v Memtype.v Memory.v Values.
 
 ARCH=Archi.v
 
-EXTRACTION=extraction.v
+EXTRACTION=Extraction.v
 
 PARSERVALID= Alphabet.v Tuples.v Grammar.v Automaton.v Validator_safe.v Validator_complete.v \
   Interpreter.v Interpreter_correct.v Interpreter_complete.v Interpreter_safe.v Main.v
 
 DRIVER=Tree.v
 
-TRANSLATOR=Asm.v AsmGen.v TransBase.v TransProtocol.v TransLayerBlock.v TransPin.v
+TRANSLATOR=Asm.v AsmGen.v Extractor.v TransUtil.v TransProtoInfo.v TransLayerBlock.v TransPin.v \
+	TransLayerStatement.v TransExpression.v TransCellAlpha.v TransBranchInfo.v TransProtoStatement.v
 
 TYPECHECKER=Types.v Typetest.v Typing.v
 
@@ -107,8 +108,7 @@ coqparser:
 
 extraction:
 	rm -f extraction/*.ml extraction/*.mli
-	$(COQEXEC) extraction/extraction.v  
-	
+	$(COQEXEC) extraction/Extraction.v
 
 afterwork:
 	mv parser/Lexer.ml extraction

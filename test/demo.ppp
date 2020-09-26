@@ -161,12 +161,10 @@ l3{
     }
         
     cellB1 {            
-        if (v4.flagOffset == 0)
-            if (v4.flags == 0)
-                set IRF_IP_FRAG_STATUS, 3;
-            else
-                set IRF_IP_FRAG_STATUS, 1;
-            endif
+        if (v4.flagOffset == 0 && v4.flags == 0)
+            set IRF_IP_FRAG_STATUS, 3;
+        elseif (v4.flagOffset == 0)
+            set IRF_IP_FRAG_STATUS, 1;
         endif
     }
 }
@@ -259,7 +257,7 @@ protocol ipv4 {
         }
     else
         action = {
-            set IRF_l3_cpu_code_8b, 2;
+            // set IRF_l3_cpu_code_8b, 2;  // IRF_l3_cpu_code_8b not defiend!
         }
     endif
     
@@ -268,23 +266,25 @@ protocol ipv4 {
         bypass = 0;
         action = {
             set IRF_l3_encode, 7;
-              set IRF_l3_type[1:0], 1;
+            set IRF_l3_type[1:0], 1;
         }    
     elseif (theProtocol == 6)
-        next_header = tcp;
+      //  next_header = tcp; // tcp was not defined!
+	next_header = ipv4;
         bypass = 1;
         action = { 
             set IRF_l3_encode, 1;
-              set IRF_l3_type[1:0], 2;
+            set IRF_l3_type[1:0], 2;
         }
     elseif (theProtocol == 0x11)
-        next_header = udp;
+      //  next_header = udp; // udp was not defined!
+	next_header = ipv4;
         bypass = 1;
         action = { 
               set IRF_l3_encode, 0;
               set IRF_l3_type[1:0], 2;
         }
     else
-        set IRF_l3_send_to_cpu_1b, 1;
+       // set IRF_l3_send_to_cpu_1b, 1; // IRF_l3_send_to_cpu_1b not defined!
     endif
 }

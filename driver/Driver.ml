@@ -5,6 +5,13 @@
   Date:      2019.10.30
 **************************************)
 
+let print_error_code error_code =
+  match error_code with
+  | Errors.MSG msg -> print_string (Camlcoq.camlstring_of_coqstring msg)
+  | Errors.CTX ctx -> print_string "CTX"
+  | Errors.POS pos -> print_string "POS"
+;;
+
 let generate_ast content =
   let rec inf = Parser.S inf in
   let lexbuf = Lexing.from_string content in
@@ -24,22 +31,15 @@ let generate_ast content =
 ;;
 
 let generate_asm ast = 
-  let result = AsmGen.program_to_asm ast in
+  let result = AsmGen.translate ast in
   (
     match result with
     | Errors.OK asm -> 
       asm
     | Errors.Error msg -> 
-      print_string "[ERROR] Generate ASM Failed!\n";
+      List.map print_error_code msg;
       exit (-4)
   )
-;;
-
-let print_error_code error_code =
-  match error_code with
-  | Errors.MSG msg -> print_string (Camlcoq.camlstring_of_coqstring msg)
-  | Errors.CTX ctx -> print_string "CTX"
-  | Errors.POS pos -> print_string "POS"
 ;;
 
 let type_check ast =
@@ -61,6 +61,10 @@ let run_compiler filename =
   if !Option.flag_print_ast then 
     Output.write_ast (Filename.chop_extension filename) (AstWriter.ast_to_string typed_ast)
   else 
+    ();
+  if !Option.flag_print_json then
+    Output.write_json (Filename.chop_extension filename) (JsonWriter.ast_to_json typed_ast)
+  else
     ();
   let asm = generate_asm typed_ast in
   if !Option.flag_print_asm then 

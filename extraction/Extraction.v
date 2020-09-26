@@ -27,12 +27,19 @@ Require Floats.
 Require Maps.
 Require Bool.
 Require Datatypes.
-Require AsmGen.
 
-Require TransBase.
-Require TransProtocol.
+Require Asm.
+Require AsmGen.
+Require Extractor.
+Require TransUtil.
+Require TransExpression.
+Require TransProtoInfo.
 Require TransLayerBlock.
 Require TransPin.
+Require TransCellAlpha.
+Require TransBranchInfo.
+Require TransLayerStatement.
+Require TransProtoStatement.
 
 Require Types.
 Require Typing.
@@ -87,20 +94,27 @@ Extract Constant Parser.ocaml_string =>
   "(fun s -> Camlcoq.camlstring_of_coqstring s)".
 Extraction "Parser.ml" Parser.root Tokenizer.get_token.
 
-Extract Constant TransBase.bool_of_str => 
-  "fun s -> bool_of_string s".
-Extract Constant TransBase.int_of_str => 
-  "fun s -> Camlcoq.coqint_of_camlint(Int32.of_string s)".
-Extract Constant TransBase.char_of_str => 
-  "fun s -> Camlcoq.coqint_of_camlint (Int32.of_int (int_of_char s.[0]))".
 Extraction Library Asm.
 Extraction Library AsmGen.
-Extraction Library TransBase.
-Extraction Library TransProtocol.
+Extraction Library Extractor.
+
+Extract Constant TransUtil.bool_of_str => 
+  "fun s -> bool_of_string s".
+Extract Constant TransUtil.int_of_str => 
+  "fun s -> Camlcoq.coqint_of_camlint(Int32.of_string s)".
+Extract Constant TransUtil.char_of_str => 
+  "fun s -> Camlcoq.coqint_of_camlint (Int32.of_int (int_of_char s.[0]))".
+
+Extraction Library TransUtil.
+Extraction Library TransExpression.
+Extraction Library TransBranchInfo.
+Extraction Library TransProtoStatement.
+Extraction Library TransLayerStatement.
+Extraction Library TransProtoInfo.
 Extraction Library TransLayerBlock.
 Extraction Library TransPin.
+Extraction Library TransCellAlpha.
 
-(* Extract Constant Types.str => "string". *)
 Extract Constant Types.ocaml_string =>
   "(fun s -> Camlcoq.camlstring_of_coqstring s)".
 Extract Constant Types.coq_string =>

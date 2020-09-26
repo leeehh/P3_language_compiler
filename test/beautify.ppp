@@ -62,7 +62,7 @@ l2 {
                   set IRF_tag_type_2b, 1;
                 set IRF_pkt_type_3b, 0;
             }
-        elseif ((eth.etherType == 0x88a8 || eth.etherType == 0x9200 || eth.etherType == 0x9300) && (qinq.ethertype_o == 0x8100) && (qinq.etherType_i == 0x0800))
+        elseif ((eth.etherType == 0x88a8 || eth.etherType == 0x9200 || eth.etherType == 0x9300) && (qinq.etherType_o == 0x8100) && (qinq.etherType_i == 0x0800))
             length = length(eth) + length(qinq);
             next_header = ipv4;
             bypass = 1;
@@ -160,12 +160,10 @@ l3{
     }
         
     cellB1 {            
-        if (v4.flagOffset == 0)
-            if (v4.flags == 0)
-                set IRF_IP_FRAG_STATUS, 3;
-            else
-                set IRF_IP_FRAG_STATUS, 1;
-            endif
+        if (v4.flagOffset == 0 && v4.flags == 0)
+            set IRF_IP_FRAG_STATUS, 3;
+        elseif (v4.flagOffset == 0)
+            set IRF_IP_FRAG_STATUS, 1;
         endif
     }
 }

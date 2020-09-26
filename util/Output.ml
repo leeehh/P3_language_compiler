@@ -11,3 +11,9 @@ let write_asm filepath asm_content =
   fprintf (formatter_of_out_channel asm_channel) "%s\n" asm_content;
   close_out asm_channel
 ;;
+
+let write_json filepath json_content =
+  let json_channel = open_out (filepath ^ ".json") in
+  fprintf (formatter_of_out_channel json_channel) "%s\n" json_content;
+  close_out json_channel
+;;

@@ -12,12 +12,12 @@ let rec bin2int i = match i with
   | BinNums.Coq_xO p -> let n = bin2int p in n + n
   | BinNums.Coq_xH -> 1
 
-let indent depth str = Printf.sprintf "%s%s" (String.make (depth * 4) ' ') str
+let indent depth str = Printf.sprintf "%s%s" (String.make (depth * 2) ' ') str
 
 let rec print_parser depth node = match node with
   | Program (v1, v2, v3, v4, v5) ->
     String.concat "\n" [
-      indent depth "<parser>";
+      indent depth "<program>";
       print_layer_register_length (depth + 1) v1;
       print_cell_register_length (depth + 1) v2;
       print_protocol_set (depth + 1) v3;
@@ -42,36 +42,36 @@ and print_cell_register_length depth node = match node with
 and print_constant depth node = match node with
   | Const_Identifier v1 ->
     String.concat "\n" [
-      indent depth "<const>";
+      indent depth "<const_id>";
       print_identifier (depth + 1) v1;
     ]
   | Const_Int v1 ->
     String.concat "\n" [
-      indent depth "<const>";
+      indent depth "<const_int>";
       print_integer (depth + 1) v1;
     ]
   | Const_Hex v1 ->
     String.concat "\n" [
-      indent depth "<const>";
+      indent depth "<const_hex>";
       print_hexadecimal (depth + 1) v1;
     ]
   | Const_Bit v1 ->
     String.concat "\n" [
-      indent depth "<const>";
+      indent depth "<const_bit>";
       print_bit (depth + 1) v1;
     ]
 
 and print_identifier depth node = 
-  indent depth (Printf.sprintf "<id>(%s, %d)" node.name (bin2int node.key))
+  indent depth (Printf.sprintf "<id>(%s - %d)" node.name (bin2int node.key))
 
 and print_integer depth node =
-  indent depth (Printf.sprintf "<int>(%s, %d)" node.name (bin2int node.key))
+  indent depth (Printf.sprintf "<id>(%s - %d)" node.name (bin2int node.key))
 
 and print_hexadecimal depth node =
-  indent depth (Printf.sprintf "<hex>(%s, %d)" node.name (bin2int node.key))
+  indent depth (Printf.sprintf "<id>(%s - %d)" node.name (bin2int node.key))
 
 and print_bit depth node =
-  indent depth (Printf.sprintf "<bit>(%s, %d)" node.name (bin2int node.key))
+  indent depth (Printf.sprintf "<id>(%s - %d)" node.name (bin2int node.key))
 
 and print_id_list depth node =
   String.concat "\n" (List.map (print_identifier depth) node);
@@ -118,7 +118,7 @@ and print_declaration depth node = match node with
 and print_constant_declaration depth node = match node with
   | Constant_Declaration (v1, v2) ->
     String.concat "\n" [
-      indent depth "<const_decl>";
+      indent depth "<constant_decl>";
       print_identifier (depth + 1) v1;
       print_constant (depth + 1) v2;
     ]
@@ -127,22 +127,16 @@ and print_protocol_declaration depth node = match node with
   | Protocol_Declaration (v1, v2) ->
     String.concat "\n" [
       indent depth  "<protocol_decl>";
-      print_protocol_id (depth + 1) v1;
+      print_identifier (depth + 1) v1;
       print_protocol (depth + 1) v2;
     ]
-
-and print_protocol_id depth node =
-  String.concat "\n" [
-    indent depth "<protocol_id>";
-    print_identifier (depth + 1) node;
-  ]
 
 and print_protocol depth node = match node with
   | Protocol (v1, v2) ->
     String.concat "\n" [
       indent depth "<protocol>";
       print_fields (depth + 1) v1;
-      print_protocol_statement_list (depth + 1) v2;
+      print_protocol_statement (depth + 1) v2;
     ]
 
 and print_fields depth node = match node with
@@ -174,86 +168,84 @@ and print_optional_field depth node = match node with
   | No_Optional_Field ->
     indent depth "<no_option_field>"
 
-and print_protocol_statement_list depth node =
-  String.concat "\n" (List.map (print_protocol_statement depth) node)
-
 and print_protocol_statement depth node = match node with
-  | Protocol_If v1 ->
+  | Protocol_Statement v1 ->
     String.concat "\n" [
-      indent depth "<p_stmt>";
-      print_protocol_if_statement (depth + 1) v1;
-    ]
-  | Protocol_Next_Header v1 ->
-    String.concat "\n" [
-      indent depth "<p_stmt>";
-      print_next_header (depth + 1) v1;
-    ]
-  | Protocol_Length v1 ->
-    String.concat "\n" [
-      indent depth "<p_stmt>";
-      print_length (depth + 1) v1;
-    ]
-  | Protocol_Bypass v1 ->
-    String.concat "\n" [
-      indent depth "<p_stmt>";
-      print_bypass (depth + 1) v1;
-    ]
-  | Protocol_Action v1 ->
-    String.concat "\n" [
-      indent depth "<p_stmt>";
-      print_action_statement (depth + 1) v1;
+      indent depth "<p_stmts>";
+      print_select_statement_list (depth + 1) v1;
     ]
 
-and print_next_header depth node = 
-  String.concat "\n" [
-    indent depth "<next_header>";
-    print_identifier (depth + 1) node;
-  ]
+and print_select_statement_list depth node =
+  String.concat "\n" (List.map (print_select_statement depth) node)
 
-and print_length depth node = 
-  String.concat "\n" [
-    indent depth "<length>";
-    print_constant (depth + 1) node;
-  ]
-
-and print_bypass depth node = 
-  String.concat "\n" [
-    indent depth "<bypass>";
-    print_constant (depth + 1) node;
-  ]
-
-and print_protocol_if_statement depth node = match node with
-  | Protocol_If_Statement (v1, v2) ->
+and print_select_statement depth node = match node with
+  | As_If v1 ->
     String.concat "\n" [
-      indent depth "<if_else_p_stmt>";
-      print_protocol_if_branch_list depth v1;
-      print_protocol_default_branch depth v2;
+      indent depth "<select_stmt>";
+      print_if_statement (depth + 1) v1;
+    ]
+  | As_Simple v1 ->
+    String.concat "\n" [
+      indent depth "<select_stmt>";
+      print_statement (depth + 1) v1;
     ]
 
-and print_protocol_if_branch_list depth node =
-  String.concat "\n" (List.map (print_protocol_if_branch depth) node)
-
-and print_protocol_if_branch depth node = match node with
-  | Protocol_If_Branch (v1, v2) ->
+and print_if_statement depth node = match node with
+  | If_Statement (v1, v2) ->
     String.concat "\n" [
-      indent depth "<if_branch_p>";
+      indent depth "<if_else_stmt>";
+      print_if_branch_list (depth + 1) v1;
+      print_else_branch (depth + 1) v2;
+    ]
+
+and print_if_branch_list depth node =
+  String.concat "\n" (List.map (print_if_branch depth) node)
+
+and print_if_branch depth node = match node with
+  | If_Branch (v1, v2) ->
+    String.concat "\n" [
+      indent depth "<if_branch>";
       print_expression (depth + 1) v1;
-      print_protocol_statement_list (depth + 1) v2;
+      print_statement_list (depth + 1) v2;
     ]
 
-and print_protocol_default_branch depth node = match node with
-  | Protocol_Default_Branch v1 ->
+and print_else_branch depth node = match node with
+  | Else_Branch v1 ->
     String.concat "\n" [
-      indent depth "<default_branch_p>";
-      print_protocol_statement_list (depth + 1) v1;
+      indent depth "<else_branch>";
+      print_statement_list (depth + 1) v1;
     ]
-  | Protocol_No_Default_Branch ->
-    indent depth "<no_default_branch_p>"
 
-and print_action_statement depth node = match node with
+and print_statement_list depth node =
+  String.concat "\n" (List.map (print_statement depth) node)
+
+and print_statement depth node = match node with
+  | Next_Header_Statement v1 ->
+    String.concat "\n" [
+      indent depth "<header_stmt>";
+      print_identifier (depth + 1) v1;
+    ]
+  | Length_Statement v1 ->
+    String.concat "\n" [
+      indent depth "<length_stmt>";
+      print_expression (depth + 1) v1;
+    ]
+  | Bypass_Statement v1 ->
+    String.concat "\n" [
+      indent depth "<bypass_stmt>";
+      print_constant (depth + 1) v1;
+    ]
   | Action_Statement v1 ->
     String.concat "\n" [
       indent depth "<action_stmt>";
+      print_action_statement (depth + 1) v1;
+    ]
+
+
+and print_action_statement depth node = match node with
+  | Act_Statement v1 ->
+    String.concat "\n" [
+      indent depth "<action>";
       print_instruction_list (depth + 1) v1;
     ]
 
@@ -294,14 +286,14 @@ and print_register_access_set_list depth node =
 and print_register_access_set depth node = match node with
   | Register_Access_Set_Section (v1, v2, v3) ->
     String.concat "\n" [
-      indent depth "<reg_acc_set>";
+      indent depth "<reg_acc_set_section>";
       print_register_access_name (depth + 1) v1;
       print_expression (depth + 1) v2;
       print_expression (depth + 1) v3;
     ]
   | Register_Access_Set_Bit (v1, v2) ->
     String.concat "\n" [
-      indent depth "<reg_acc_set>";
+      indent depth "<reg_acc_set_bit>";
       print_register_access_name (depth + 1) v1;
       print_expression (depth + 1) v2;
     ]
@@ -315,19 +307,19 @@ and print_register_access_name depth node =
 and print_target_register_access_name depth node = match node with
   | Target_Register_Id v1 ->
     String.concat "\n" [
-      indent depth "<tgt_reg_acc_name>";
+      indent depth "<tgt_reg_acc_id>";
       print_identifier (depth + 1) v1;
     ]
   | Target_Register_Section (v1, v2, v3) ->
     String.concat "\n" [
-      indent depth "<tgt_reg_acc_name>";
+      indent depth "<tgt_reg_acc_section>";
       print_target_register_access_name (depth + 1) v1;
       print_expression (depth + 1) v2;
       print_expression (depth + 1) v3;
     ]
   | Target_Register_Bit (v1, v2) ->
     String.concat "\n" [
-      indent depth "<tgt_reg_acc_name>";
+      indent depth "<tgt_reg_acc_bit>";
       print_target_register_access_name (depth + 1) v1;
       print_expression (depth + 1) v2;
     ]
@@ -335,12 +327,12 @@ and print_target_register_access_name depth node = match node with
 and print_move_register_access_name depth node = match node with
   | Move_Register_Single v1 ->
     String.concat "\n" [
-      indent depth "<mov_reg_acc_name>";
+      indent depth "<mov_reg_acc_single>";
       print_target_register_access_name (depth + 1) v1;
     ]
   | Move_Register_Double (v1, v2) ->
     String.concat "\n" [
-      indent depth "<mov_reg_acc_name>";
+      indent depth "<mov_reg_acc_double>";
       print_move_register_access_name (depth + 1) v1;
       print_target_register_access_name (depth + 1) v2;
     ]
@@ -381,8 +373,6 @@ and print_cell_a_register depth node = match node with
       indent depth "<cella_regs>";
       print_register_access_set_list (depth + 1) v1;
     ]
-  | No_Cell_A_Register ->
-    indent depth "<cella_regs>(None)"
 
 and print_cell_b0_register depth node = match node with
   | Cell_B0_Register v1 ->
@@ -390,8 +380,6 @@ and print_cell_b0_register depth node = match node with
       indent depth "<cellb0_regs>";
       print_register_access_set_list (depth + 1) v1;
     ]
-  | No_Cell_B0_Register ->
-    indent depth "<cellb0_regs>(None)"
 
 and print_cell_b1_register depth node = match node with
   | Cell_B1_Register v1 ->
@@ -399,8 +387,6 @@ and print_cell_b1_register depth node = match node with
       indent depth "<cellb1_regs>";
       print_register_access_set_list (depth + 1) v1;
     ]
-  | No_Cell_B1_Register ->
-    indent depth "<cellb1_regs>(None)"
 
 and print_local_action depth node = match node with
   | Local_Action (v1, v2, v3) ->
@@ -415,86 +401,29 @@ and print_cell_a_action depth node = match node with
   | Cell_A_Action v1 ->
     String.concat "\n" [
       indent depth "<cella_actions>";
-      print_layer_statement_list (depth + 1) v1;
+      print_layer_statement (depth + 1) v1;
     ]
-  | No_Cell_A_Action ->
-    indent depth "<cella_actions>(None)"
 
 and print_cell_b0_action depth node = match node with
   | Cell_B0_Action v1 ->
     String.concat "\n" [
       indent depth "<cellb0_actions>";
-      print_layer_statement_list (depth + 1) v1;
+      print_layer_statement (depth + 1) v1;
     ]
-  | No_Cell_B0_Action ->
-    indent depth "<cellb0_actions>(None)"
 
 and print_cell_b1_action depth node = match node with
   | Cell_B1_Action v1 ->
     String.concat "\n" [
       indent depth "<cellb1_actions>";
-      print_layer_statement_list (depth + 1) v1;
+      print_layer_statement (depth + 1) v1;
     ]
-  | No_Cell_B1_Action ->
-    indent depth "<cellb1_actions>(None)"
-
-and print_layer_statement_list depth node =
-  String.concat "\n" (List.map (print_layer_statement depth) node)
 
 and print_layer_statement depth node = match node with
-  | Layer_If v1 ->
+  | Layer_Statement v1 ->
     String.concat "\n" [
-      indent depth "<l_stmt>";
-      print_layer_if_statement (depth + 1) v1;
+      indent depth "<l_stmts>";
+      print_select_statement_list (depth + 1) v1;
     ]
-  | Layer_Bypass v1 ->
-    String.concat "\n" [
-      indent depth "<l_stmt>";
-      print_bypass (depth + 1) v1;
-    ]
-  | Layer_Next_Header v1 ->
-    String.concat "\n" [
-      indent depth "<l_stmt>";
-      print_next_header (depth + 1) v1;
-    ]
-  | Layer_Length v1 ->
-    String.concat "\n" [
-      indent depth "<l_stmt>";
-      print_expression (depth + 1) v1;
-    ]
-  | Layer_As_Action v1 ->
-    String.concat "\n" [
-      indent depth "<l_stmt>";
-      print_action_statement (depth + 1) v1;
-    ]
-
-and print_layer_if_statement depth node = match node with
-  | Layer_If_Statement (v1, v2) ->
-    String.concat "\n" [
-      indent depth "<if_else_l_stmt>";
-      print_layer_if_branch_list (depth + 1) v1;
-      print_layer_default_branch (depth + 1) v2; 
-    ]
-
-and print_layer_if_branch_list depth node =
-  String.concat "\n" (List.map (print_layer_if_branch depth) node)
-
-and print_layer_if_branch depth node = match node with
-  | Layer_If_Branch (v1, v2) ->
-    String.concat "\n" [
-      indent depth "<if_branch_l>";
-      print_expression (depth + 1) v1;
-      print_layer_statement_list (depth + 1) v2;
-    ]
-
-and print_layer_default_branch depth node = match node with
-  | Layer_Default_Branch v1 ->
-    String.concat "\n" [
-      indent depth "<default_branch_l>";
-      print_layer_statement_list (depth + 1) v1;
-    ]
-  | Layer_No_Default_Branch ->
-    indent depth "<default_branch_l>(None)"
 
 and print_expression depth node = match node with
   | Constant_Expression v1 ->
@@ -541,7 +470,7 @@ and print_expression depth node = match node with
     ]
   | Length_Expression v1 ->
     String.concat "\n" [
-      indent depth "<length _expr>";
+      indent depth "<length_expr>";
       print_identifier (depth + 1) v1;
     ]
 

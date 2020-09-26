@@ -441,21 +441,18 @@ Definition initialization_of_La (g_envs : g_scope) (id_envs : id_scope) (pid_env
            (reg_cella : cell_a_register) :=
   match reg_cella with
   | Cell_A_Register list_reg_acc_set => initialization_of_list_reg g_envs id_envs pid_envs empty_id_env list_reg_acc_set
-  | No_Cell_A_Register => OK empty_id_env
   end.
 
 Definition initialization_of_Lb0 (g_envs : g_scope) (id_envs : id_scope) (pid_envs : pid_scope)
            (reg_cellb0 : cell_b0_register) :=
   match reg_cellb0 with
   | Cell_B0_Register list_reg_acc_set => initialization_of_list_reg g_envs id_envs pid_envs empty_id_env list_reg_acc_set
-  | No_Cell_B0_Register => OK empty_id_env
   end.
 
 Definition initialization_of_Lb1 (g_envs : g_scope) (id_envs : id_scope) (pid_envs : pid_scope)
            (reg_cellb1 : cell_b1_register) :=
   match reg_cellb1 with
   | Cell_B1_Register list_reg_acc_set => initialization_of_list_reg g_envs id_envs pid_envs empty_id_env list_reg_acc_set
-  | No_Cell_B1_Register => OK empty_id_env
   end.
 
 Definition initialization_of_Lc (g_envs : g_scope) (id_envs : id_scope) (pid_envs : pid_scope)
@@ -561,31 +558,31 @@ Fixpoint typecheck_instructions (g_envs : g_scope) (id_envs : id_scope)
         | Set_Instruction tra e =>
           let srt := typecheck_target_register_access_name g_envs id_envs pid_envs tra in
           let st := typecheck_expression g_envs pid_envs id_envs e in
-          let test1 :=
-              match srt, st with
-              | OK (TRegAcc n' n1 n2), OK (TConst t' m) =>
-                let len := length_of_Z m in
-                Nat.leb len (S (Nat.sub n1 n2))
-              | _, _ => false
-              end
-          in
-          if test1 then OK true else Error (msg "type error in set instruction")
+          match srt, st with
+          | OK (TRegAcc n' n1 n2), OK (TConst t' m) =>
+            let len := length_of_Z m in
+            if Nat.leb len (S (Nat.sub n1 n2)) then
+              OK true else Error (msg "length not match in set instruction")
+          | _, _ => Error (msg "type error in set instruction")
+          end
         | Mov_Instruction mra e =>
           let smt := typecheck_move_register_access_name g_envs id_envs pid_envs mra in
           let st := typecheck_expression g_envs pid_envs id_envs e in
-          let test2 := 
-              match smt with
-              | OK (TRegAcc n' n1 n2) =>
-                match st with
-                | OK (TRegAcc n_r r' r'') => Nat.eqb (Nat.sub n1 n2) (Nat.sub r' r'')
-                | OK (TFieldAcc_cell id' n_f f' f'') => Nat.eqb (Nat.sub n1 n2) (Nat.sub f'' f')
-                | OK (TFieldAcc_protocol n_f f' f'') => Nat.eqb (Nat.sub n1 n2) (Nat.sub f'' f')
-                | _ => false
-                end
-              | _ => false
-              end
-          in
-          if test2 then OK true else Error (msg "type error in move instruction")
+          match smt with
+          | OK (TRegAcc n' n1 n2) =>
+            match st with
+            | OK (TRegAcc n_r r' r'') => if Nat.eqb (Nat.sub n1 n2) (Nat.sub r' r'') then OK true
+                                        else Error (msg "length not match in move instruction")
+            | OK (TFieldAcc_cell id' n_f f' f'') => if Nat.eqb (Nat.sub n1 n2) (Nat.sub f'' f') then OK true
+                                                   else Error (msg "length not match in move instruction")
+            | OK (TFieldAcc_protocol n_f f' f'') => if Nat.eqb (Nat.sub n1 n2) (Nat.sub f'' f') then OK true
+                                                   else Error (msg "length not match in move instruction")
+            | OK _ => Error (msg "type error in move instruction")
+            | Error e'' => Error e''
+            end
+          | OK _ => Error (msg "type error in move instruction")
+          | Error e''' => Error e'''
+          end
         | Lg_Instruction tra e1 e2 =>
           let srt := typecheck_target_register_access_name g_envs id_envs pid_envs tra in
           let st1 := typecheck_expression g_envs pid_envs id_envs e1 in
@@ -613,98 +610,128 @@ Fixpoint typecheck_instructions (g_envs : g_scope) (id_envs : id_scope)
 Definition typecheck_action_statement (g_envs : g_scope) (id_envs : id_scope)
            (pid_envs : pid_scope) (act : action_statement) :=
   match act with
-  | Action_Statement list_instruction =>
+  | Act_Statement list_instruction =>
     typecheck_instructions g_envs id_envs pid_envs list_instruction
   end.
 
-Fixpoint typecheck_protocol_if_branches (g_envs : g_scope) (id_envs : id_scope)
-         (pid_envs : pid_scope) (list_pro_if_branch : list protocol_if_branch) (f : list protocol_statement -> res bool) :=
-  match list_pro_if_branch with
-  | nil => OK true
-  | h :: t =>
-    let test :=
-        match h with
-        | Protocol_If_Branch e stas =>
-          match typecheck_expression g_envs pid_envs id_envs e with
-          | OK TBool => f stas
-          | _ => Error (msg "type error in protocol if condition")
-          end
-        end
-    in
-    match test with
-    | OK _ => OK true
-    | Error e' => Error e'
-    end
-  end.
-
-Definition typecheck_protocol_default_branch (g_envs : g_scope) (id_envs : id_scope)
-           (pid_envs : pid_scope) (pro_de_branch : protocol_default_branch) (f : list protocol_statement -> res bool):=
-  let test :=
-      match pro_de_branch with
-      | Protocol_Default_Branch stas => f stas
-      | Protocol_No_Default_Branch => OK true
+Definition typecheck_statement (g_envs : g_scope) (id_envs : id_scope)
+           (pid_envs : pid_scope) (op : statement_position) (s : statement) : res bool :=
+  let test_support :=
+      let test_cell := match op with
+                       | In_Protocol _ => true
+                       | In_Layer cell => eqb_string cell "A"
+                       end in
+      match s with
+      | Action_Statement _ => true
+      | _ => test_cell
+      end in
+  if test_support then
+    match s with
+    | Next_Header_Statement id =>
+      match find_scope_id id pid_envs with
+      | OK _ => OK true
+      | Error e' => Error e'
       end
-  in
-  match test with
-  | OK _ => OK true
-  | Error e' => Error e'
-  end.
-
-Definition typecheck_protocol_if_statement (g_envs : g_scope) (id_envs : id_scope)
-           (pid_envs : pid_scope) (if_stas : protocol_if_statement) (f : list protocol_statement -> res bool) :=
-  match if_stas with
-  | Protocol_If_Statement list_pro_if_branch pro_de_branch =>
-    let t1 := typecheck_protocol_if_branches g_envs id_envs pid_envs list_pro_if_branch f in
-    let t2 := typecheck_protocol_default_branch g_envs id_envs pid_envs pro_de_branch f in
-    match t1 with
-    | OK _ => OK true
-    | Error e' => Error e'
-    end
-  end.
-
-Fixpoint typecheck_statement_in_a_protocol (g_envs : g_scope) (id_envs : id_scope)
-         (pid_envs : pid_scope) (timer : nat) (len : nat) (statements : list protocol_statement) : res bool :=
-  (*cannot guess decreasing, use timer to solve*)
-  match timer with
-  | O => Error (msg "Timed out in protocol statements")
-  | S timer' =>
-    let f := typecheck_statement_in_a_protocol g_envs id_envs pid_envs timer' len in
-    match statements with
-    | nil => OK true
-    | h :: t =>
-      let tmp :=
-          match h with
-          | Protocol_If pro_if_sta => typecheck_protocol_if_statement g_envs id_envs pid_envs pro_if_sta f
-          | Protocol_Next_Header id =>
-            match find_scope_id id pid_envs with
-            | OK _ => OK true
-            | Error e' => Error e'
-            end
-          | Protocol_Length c =>
-            let test1 :=
-                match typecheck_constant id_envs c with
-                | OK (TConst TInt n) => (n * 8 >=? (Z.of_N (N.of_nat len)))
-                | _ => false
-                end
-            in
-            if test1 then OK true else Error (msg "type error in protocol_length statement")
-          | Protocol_Bypass c =>
-            let test2 :=
-                match typecheck_constant id_envs c with
-                | OK (TConst TInt n) => if (n =? 0) || (n =? 1) || (n =? 2) then true else false
-                | _ => false
-                end
-            in
-            if test2 then OK true else Error (msg "type error in protocol_bypass statement")
-          | Protocol_Action act =>
-            typecheck_action_statement g_envs id_envs pid_envs act
-          end
-      in
-      match tmp with
-      | OK _ => f t
+    | Length_Statement e =>
+      match op with
+      | In_Protocol len =>
+        match typecheck_expression g_envs pid_envs id_envs e with
+        | OK (TConst TInt n) => if (n * 8 >=? (Z.of_N (N.of_nat len))) then OK true
+                               else Error (msg "length not match in protocol fields")
+        | OK _ => Error (msg "type error in protocol length statement")
+        | Error e'' => Error e''
+        end
+      | In_Layer cell =>
+        match typecheck_expression g_envs pid_envs id_envs e with
+        | OK (TConst TInt n) => OK true
+        | OK TInt => OK true
+        | OK _ => Error (msg "type error in layer length statement")
+        | Error e'' => Error e''
+        end
+      end
+    | Bypass_Statement c =>
+      match typecheck_constant id_envs c with
+      | OK (TConst TInt n) => let test := if (n =? 0) || (n =? 1) || (n =? 2) then true else false in
+                             if test then OK true else Error (msg "error value in bypass statement")
+      | OK _ => Error (msg "type error in bypass statement")
       | Error e'' => Error e''
       end
+    | Action_Statement ac => typecheck_action_statement g_envs id_envs pid_envs ac
     end
+  else Error (msg "unsupport keyword in current cell").
+
+Fixpoint typecheck_list_statement (g_envs : g_scope) (id_envs : id_scope)
+         (pid_envs : pid_scope) (op : statement_position) (ls : list statement) : res bool :=
+  match ls with
+  | nil => OK true
+  | h :: t =>
+    match typecheck_statement g_envs id_envs pid_envs op h with
+    | OK _ => typecheck_list_statement g_envs id_envs pid_envs op t
+    | Error e' => Error e'
+    end
+  end.
+
+Definition typecheck_if_branch (g_envs : g_scope) (id_envs : id_scope)
+         (pid_envs : pid_scope) (op : statement_position) (ib : if_branch) : res bool :=
+  match ib with
+  | If_Branch e ls =>
+    match typecheck_expression g_envs pid_envs id_envs e with
+    | OK TBool => typecheck_list_statement g_envs id_envs pid_envs op ls
+    | OK _ => Error (msg "error type in if_branch expression")
+    | Error e' => Error e'
+    end
+  end.
+
+Fixpoint typecheck_list_if_branch (g_envs : g_scope) (id_envs : id_scope)
+         (pid_envs : pid_scope) (op : statement_position) (lib : list if_branch) : res bool :=
+  match lib with
+  | nil => OK true
+  | h :: t =>
+    match typecheck_if_branch g_envs id_envs pid_envs op h with
+      | OK _ => typecheck_list_if_branch g_envs id_envs pid_envs op t
+      | Error e' => Error e'
+    end
+  end.
+
+Definition typecheck_else_branch (g_envs : g_scope) (id_envs : id_scope)
+           (pid_envs : pid_scope) (op : statement_position) (eb : else_branch) : res bool :=
+  match eb with
+  | Else_Branch ls => typecheck_list_statement g_envs id_envs pid_envs op ls
+  end.
+
+Definition typecheck_if_statement (g_envs : g_scope) (id_envs : id_scope)
+           (pid_envs : pid_scope) (op : statement_position) (iss : if_statement) : res bool :=
+  match iss with
+  | If_Statement lib eb =>
+    match typecheck_list_if_branch g_envs id_envs pid_envs op lib with
+    | OK _ => typecheck_else_branch g_envs id_envs pid_envs op eb
+    | Error e' => Error e'
+    end
+  end.
+
+Definition typecheck_select_statement (g_envs : g_scope) (id_envs : id_scope)
+           (pid_envs : pid_scope) (op : statement_position) (ss : select_statement) : res bool :=
+  match ss with
+  | As_If iss => typecheck_if_statement g_envs id_envs pid_envs op iss
+  | As_Simple s => typecheck_statement g_envs id_envs pid_envs op s
+  end.
+
+Fixpoint typecheck_list_select_statement (g_envs : g_scope) (id_envs : id_scope)
+         (pid_envs : pid_scope) (op : statement_position) (lss : list select_statement) : res bool :=
+  match lss with
+  | nil => OK true
+  | h :: t =>
+    match typecheck_select_statement g_envs id_envs pid_envs op h with
+    | OK _ => typecheck_list_select_statement g_envs id_envs pid_envs op t
+    | Error e => Error e
+    end
+  end.
+
+Definition typecheck_protocol_statement (g_envs : g_scope) (id_envs : id_scope)
+         (pid_envs : pid_scope) (len : nat) (ps : protocol_statement) : res bool :=
+  match ps with
+  | Protocol_Statement lss =>
+    typecheck_list_select_statement g_envs id_envs pid_envs (In_Protocol len) lss
   end.
 
 Fixpoint typecheck_protocols_statement (g_envs : g_scope) (id_envs : id_scope)
@@ -722,7 +749,7 @@ Fixpoint typecheck_protocols_statement (g_envs : g_scope) (id_envs : id_scope)
                                       match sp with
                                       | OK p_envs =>
                                         let new_id_envs := List.app p_envs id_envs in (*CRLLaP*)
-                                        match typecheck_statement_in_a_protocol g_envs new_id_envs pid_envs 1000%nat len statements with
+                                        match typecheck_protocol_statement g_envs new_id_envs pid_envs len statements with
                                           | OK _ => typecheck_protocols_statement g_envs id_envs pid_envs t
                                           | Error e' => Error e'
                                         end
@@ -734,114 +761,33 @@ Fixpoint typecheck_protocols_statement (g_envs : g_scope) (id_envs : id_scope)
     end
   end.
 
-Fixpoint typecheck_layer_if_branches (g_envs : g_scope) (id_envs : id_scope)
-         (pid_envs : pid_scope) (list_la_if_branch : list layer_if_branch) (f : list layer_statement -> res bool) :=
-  match list_la_if_branch with
-  | nil => OK true
-  | h :: t =>
-    let test :=
-        match h with
-        | Layer_If_Branch e stas =>
-          match typecheck_expression g_envs pid_envs id_envs e with
-          | OK TBool => f stas
-          | OK _ => Error (msg "type error in layer if condition")
-          | Error e'' => Error e''
-          end
-        end
-    in
-    match test with
-    | OK _ => typecheck_layer_if_branches g_envs id_envs pid_envs t f
-    | Error e' => Error e'
-    end
-  end.
-
-Definition typecheck_layer_default_branch (g_envs : g_scope) (id_envs : id_scope)
-           (pid_envs : pid_scope) (la_de_branch : layer_default_branch) (f : list layer_statement -> res bool):=
-  match la_de_branch with
-  | Layer_Default_Branch stas => f stas
-  | Layer_No_Default_Branch => OK true
-  end.
-
-Definition typecheck_layer_if_statement (g_envs : g_scope) (id_envs : id_scope)
-           (pid_envs : pid_scope) (if_stas : layer_if_statement) (f : list layer_statement -> res bool) :=
-  match if_stas with
-  | Layer_If_Statement list_la_if_branch la_de_branch =>
-    let t1 := typecheck_layer_if_branches g_envs id_envs pid_envs list_la_if_branch f in
-    let t2 := typecheck_layer_default_branch g_envs id_envs pid_envs la_de_branch f in
-    match t1 with
-    | OK _ => t2
-    | Error e' => Error e'
-    end
-  end.
-
 Fixpoint typecheck_layer_statement (g_envs : g_scope) (id_envs : id_scope)
-         (pid_envs : pid_scope) (timer : nat) (cell : string) (statements : list layer_statement) :=
-  match timer with
-  | O => Error (msg "Timed out in layer statements")
-  | S timer' =>
-    let f := typecheck_layer_statement g_envs id_envs pid_envs timer' cell in
-    match statements with
-    | nil => OK true
-    | h :: t =>
-      let tmp :=
-          match h with
-          | Layer_If la_if_sta => typecheck_layer_if_statement g_envs id_envs pid_envs la_if_sta f
-          | Layer_Next_Header id =>
-            if (eqb_string cell "A") then
-              match find_scope_id id pid_envs with
-              | OK _ => OK true
-              | Error e' => Error e'
-              end
-            else Error (msg "unsupport keyword in current cell")
-          | Layer_Length e =>
-            if (eqb_string cell "A") then
-              match typecheck_expression g_envs pid_envs id_envs e with
-              | OK (TConst TInt n) => OK true
-              | OK (TInt) => OK true
-              | OK _ => Error (msg "invalid expression type in layer length")
-              | Error e' => Error e'
-              end
-            else Error (msg "unsupport keyword in current cell")
-          | Layer_Bypass c =>
-            if (eqb_string cell "A") then
-              match typecheck_constant id_envs c with
-              | OK (TConst TInt n) => if (n =? 0) || (n =? 1) || (n =? 2) then OK true else Error (msg "invalid n in layer bypass")
-              | _ => Error (msg "invalid constant in layer bypass")
-              end
-            else Error (msg "unsupport keyword in current cell")
-          | Layer_As_Action act =>
-            typecheck_action_statement g_envs id_envs pid_envs act
-          end
-      in
-      match tmp with
-      | OK _ => f t
-      | Error e'' => Error e''
-      end
-    end
+         (pid_envs : pid_scope) (cell : string) (statement : layer_statement) :=
+  match statement with
+  | Layer_Statement lss =>
+    typecheck_list_select_statement g_envs id_envs pid_envs (In_Layer cell) lss
   end.
+
 
 Definition typecheck_cell_a_action (g_envs : g_scope) (id_envs : id_scope)
            (pid_envs : pid_scope) (cell_a_act : cell_a_action) :=
   match cell_a_act with
   | Cell_A_Action statements =>
-    typecheck_layer_statement g_envs id_envs pid_envs 1000%nat "A" statements
-  | No_Cell_A_Action => OK true
+    typecheck_layer_statement g_envs id_envs pid_envs "A" statements
   end.
 
 Definition typecheck_cell_b0_action (g_envs : g_scope) (id_envs : id_scope)
            (pid_envs : pid_scope) (cell_b0_act : cell_b0_action) :=
   match cell_b0_act with
   | Cell_B0_Action statements =>
-    typecheck_layer_statement g_envs id_envs pid_envs 1000%nat "B0" statements
-  | No_Cell_B0_Action => OK true
+    typecheck_layer_statement g_envs id_envs pid_envs "B0" statements
   end.
 
 Definition typecheck_cell_b1_action (g_envs : g_scope) (id_envs : id_scope)
            (pid_envs : pid_scope) (cell_b1_act : cell_b1_action) :=
   match cell_b1_act with
   | Cell_B1_Action statements =>
-    typecheck_layer_statement g_envs id_envs pid_envs 1000%nat "B1" statements
-  | No_Cell_B1_Action => OK true
+    typecheck_layer_statement g_envs id_envs pid_envs "B1" statements
   end.
 
 Definition typecheck_local_action (g_envs : g_scope) (CRLLa CRLLb0 CRLLb1 : id_scope)
@@ -881,7 +827,7 @@ Fixpoint typecheck_layer (g_envs : g_scope) (c_envs r_envs : id_scope)
             let t1 := typecheck_protocols_statement g_envs new_id_envs_CRLLa pid_envs list_layer_decl in
             let t2 := typecheck_local_action g_envs new_id_envs_CRLLa new_id_envs_CRLLb0 new_id_envs_CRLLb1 pid_envs local_act in
             match t1, t2 with
-              | OK _, OK _ => 
+              | OK _, OK _ =>
                 match update_r_envs g_envs new_id_envs_La new_id_envs_Lb0 new_id_envs_Lb1 with
                 | OK new_r_envs =>
                   typecheck_layer g_envs c_envs new_r_envs pid_envs t

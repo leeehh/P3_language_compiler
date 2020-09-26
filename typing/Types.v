@@ -20,7 +20,11 @@ Inductive ty : Type :=
 | TBool : ty.
 
 Inductive protocol_symbol : Type :=
-| Protocol_Symbol : list (string * nat) -> optional_field -> list protocol_statement -> protocol_symbol.
+| Protocol_Symbol : list (string * nat) -> optional_field -> protocol_statement -> protocol_symbol.
+
+Inductive statement_position : Type :=
+| In_Protocol : nat -> statement_position
+| In_Layer : string -> statement_position.
 
 Definition id_scope := list (string * ty). (* Envs : C R L Lc P *)
 

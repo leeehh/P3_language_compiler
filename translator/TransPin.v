@@ -5,39 +5,43 @@ Require Import Tree.
 Require Import String.
 Require Import Asm.
 
-Require TransBase.
+Require TransUtil.
 
 Local Open Scope error_monad_scope.
 
 Set Implicit Arguments.
 
-Definition make_pin_asm (l : int) (id : identifier) : pin_asm :=
-  Pin_Asm id l
-  .
+Definition info_to_pin (pi : pin_info) : res pin :=
+  OK (Pin (pin_name pi) (proto_length (proto_info pi))).
 
-Fixpoint get_protocol_length (id : identifier) (pil : list protocol_info) : res int :=
+Fixpoint info_to_pin_list (pil : list pin_info) : res (list pin) :=
   match pil with
-  | nil => Error (msg "canot be found in protocol!!")
+  | nil =>
+    OK nil
   | hd :: tl =>
-    if TransBase.identifier_eq id (protocol_id hd) then
-      OK (protocol_length hd)
-    else
-      get_protocol_length id tl
+    do v1 <- info_to_pin hd;
+    do v2 <- info_to_pin_list tl;
+    OK (v1 :: v2)
   end.
 
-Definition to_pin_asm (ld : layer_declaration) (pil : list protocol_info) : res (list pin_asm) :=
+Definition make_pin_info (pi : protocol_info) (pn : identifier) : pin_info := {| proto_info := pi; pin_name := pn |}.
+
+Definition trans_pin_info (ld : layer_declaration) (pil : list protocol_info) : res (list pin_info) :=
   match ld with
-  | Layer_As_Protocol v1 v2 =>
-    do len <- get_protocol_length v1 pil;
-    OK (List.map (make_pin_asm len) v2 )
+  | Layer_As_Protocol proto_id proto_name_list =>
+    do proto_info <- TransUtil.find_protocol_info proto_id pil;
+    OK (List.map (make_pin_info proto_info) proto_name_list)
   end.
  
 
-Fixpoint to_pin_asm_list (ldl : list layer_declaration) (pil : list protocol_info) : res (list pin_asm) :=
+Fixpoint trans_pin_info_list (ldl : list layer_declaration) (pil : list protocol_info) : res (list pin_info) :=
   match ldl with
   | nil => OK nil
   | hd :: tl =>
-    do v1 <- to_pin_asm hd pil;
-    do v2 <- to_pin_asm_list tl pil;
+    do v1 <- trans_pin_info hd pil;
+    do v2 <- trans_pin_info_list tl pil;
     OK (v1 ++ v2)
   end.
+
+Definition translate (ldl : list layer_declaration) (pil : list protocol_info) : res (list pin_info) := 
+  trans_pin_info_list ldl pil.

@@ -57,13 +57,16 @@ Parameter ocaml_string: String.string -> integer.
 %type<list field> field_list
 %type<field> field
 %type<optional_field> optional_field
-%type<list protocol_statement> protocol_statement_list
 %type<protocol_statement> protocol_statement
-%type<protocol_if_statement> protocol_if_statement
-%type<protocol_if_branch> protocol_if_branch
-%type<list protocol_if_branch> protocol_else_if_branch_list
-%type<protocol_if_branch> protocol_else_if_branch
-%type<protocol_default_branch> protocol_else_branch
+%type<list select_statement> select_statement_list
+%type<select_statement> select_statement
+%type<if_statement> if_statement
+%type<if_branch> if_branch
+%type<list if_branch> else_if_branch_list
+%type<if_branch> else_if_branch
+%type<else_branch> else_branch
+%type<list statement> statement_list
+%type<statement> statement
 %type<action_statement> action_statement
 %type<list instruction> instruction_list
 %type<instruction> instruction
@@ -82,13 +85,7 @@ Parameter ocaml_string: String.string -> integer.
 %type<cell_a_action> cell_a_action
 %type<cell_b0_action> cell_b0_action
 %type<cell_b1_action> cell_b1_action
-%type<list layer_statement> layer_statement_list
 %type<layer_statement> layer_statement
-%type<layer_if_statement> layer_if_statement
-%type<layer_if_branch> layer_if_branch
-%type<list layer_if_branch> layer_else_if_branch_list
-%type<layer_if_branch> layer_else_if_branch
-%type<layer_default_branch> layer_else_branch
 
 %type<expression> expression
 %type<expression> logical_or_expression
@@ -118,20 +115,26 @@ root:
 
 (* <layer_reg_len> *)
 layer_register_length:
-  | LREGLEN; EQ; v1 = CONST_INT; BYTES; SEMICOLON
-    { Layer_Register_Length (Const_Int {| name := v1; key := xH |}) }
+  | LREGLEN; EQ; v1 = constant; BYTES; SEMICOLON
+    { Layer_Register_Length v1 }
   ;
 
 (* <cell_reg_len> *)
 cell_register_length:
-  | CREGLEN; EQ; v1 = CONST_INT; BYTES; SEMICOLON
-    { Cell_Register_Length (Const_Int {| name := v1; key := xH |}) }
+  | CREGLEN; EQ; v1 = constant; BYTES; SEMICOLON
+    { Cell_Register_Length v1 }
   ;
 
 (* <protocol_set> *)
 protocol_set:
   | PSET; EQ; LBRACE; v1 = id_list; RBRACE; SEMICOLON
     { Protocol_Set v1 }
+  ;
+
+(* <layer_set> *)
+layer_set:
+  | LSET; EQ; LBRACE; v1 = id_list; RBRACE; SEMICOLON
+    { Layer_Set v1 }
   ;
 
 (* <id_list> *)
@@ -146,12 +149,6 @@ id_list:
 identifier:
   | v1 = IDENT
     { {| name := v1; key := intern_string v1 |} }
-  ;
-
-(* <layer_set> *)
-layer_set:
-  | LSET; EQ; LBRACE; v1 = id_list; RBRACE; SEMICOLON
-    { Layer_Set v1 }
   ;
 
 (* { <decl> } *)
@@ -200,7 +197,7 @@ protocol_declaration:
 
 (* <protocol> *)
 protocol:
-  | v1 = fields; v2 = protocol_statement_list
+  | v1 = fields; v2 = protocol_statement
     { Protocol v1 v2 }
   ;
 
@@ -214,8 +211,8 @@ fields:
 field_list:
   | v1 = field; v2 = field_list
     { v1 :: v2 }
-  | v1 = field
-    { [ v1 ] }
+  | (* empty *)
+    { [] }
   ;
 
 (* <field> *)
@@ -233,62 +230,81 @@ optional_field:
   ;
 
 (* <p_stmts> *)
-protocol_statement_list:
-  | v1 = protocol_statement; v2 = protocol_statement_list
-    { v1:: v2}
-  | (* empty *)
-    { [] }
-  ;
-
-(* <p_stmt> *)
 protocol_statement:
-  | v1 = protocol_if_statement
-    { Protocol_If v1 }
-  | NEXT_HEADER; EQ; v1 = IDENT; SEMICOLON
-    { Protocol_Next_Header {| name := v1; key := intern_string v1 |} }
-  | LENGTH; EQ; v1 = constant; SEMICOLON
-    { Protocol_Length v1 }
-  | BYPASS; EQ; v1 = constant; SEMICOLON
-    { Protocol_Bypass v1 }
-  | v1 = action_statement
-    { Protocol_Action v1 }
+  | v1 = select_statement_list
+    { Protocol_Statement v1 }
   ;
 
-(* <if_else_p_stmt> *)
-protocol_if_statement:
-  | v1 = protocol_if_branch; v2 = protocol_else_if_branch_list; v3 = protocol_else_branch; ENDIF
-    { Protocol_If_Statement (v1 :: v2) v3 }
-  ;
-
-protocol_if_branch:
-  | IF; LPAREN; v1 = expression; RPAREN; v2 = protocol_statement_list
-    { Protocol_If_Branch v1 v2 }
-  ;
-
-protocol_else_if_branch_list:
-  | v1 = protocol_else_if_branch; v2 = protocol_else_if_branch_list
+(* { <select_stmt> } *)
+select_statement_list:
+  | v1 = select_statement; v2 = select_statement_list
     { v1 :: v2 }
   | (* empty *)
     { [] }
-
-protocol_else_if_branch:
-  | ELSEIF; LPAREN; v1 = expression; RPAREN; v2 = protocol_statement_list
-    { Protocol_If_Branch v1 v2 }
   ;
 
-protocol_else_branch:
-  | ELSE; v1 = protocol_statement_list;
-    { Protocol_Default_Branch v1 }
+(* <select_stmt> *)
+select_statement:
+  | v1 = if_statement
+    { As_If v1 }
+  | v1 = statement
+    { As_Simple v1 }
+  ;
+
+(* <if_else_stmt> *)
+if_statement:
+  | v1 = if_branch; v2 = else_if_branch_list; v3 = else_branch; ENDIF
+    { If_Statement (v1 :: v2) v3 }
+  ;
+
+if_branch:
+  | IF; LPAREN; v1 = expression; RPAREN; v2 = statement_list
+    { If_Branch v1 v2 }
+  ;
+
+else_if_branch_list:
+  | v1 = else_if_branch; v2 = else_if_branch_list
+    { v1 :: v2 }
   | (* empty *)
-    { Protocol_No_Default_Branch }
+    { [] }
+  ;
+
+else_if_branch:
+  | ELSEIF; LPAREN; v1 = expression; RPAREN; v2 = statement_list
+    { If_Branch v1 v2 }
+  ;
+
+else_branch:
+  | ELSE; v1 = statement_list;
+    { Else_Branch v1 }
+  | (* empty *)
+    { Else_Branch [] }
+  ;
+
+statement_list:
+  | v1 = statement; v2 = statement_list
+    { v1 :: v2 }
+  | (* empty *)
+    { [] }
+  ;
+
+statement:
+  | BYPASS; EQ; v1 = constant; SEMICOLON
+    { Bypass_Statement v1 }
+  | NEXT_HEADER; EQ; v1 = identifier; SEMICOLON
+    { Next_Header_Statement v1 }
+  | LENGTH; EQ; v1 = expression; SEMICOLON
+    { Length_Statement v1 }
+  | v1 = action_statement
+    { Action_Statement v1 }
   ;
 
 (* <action_stmt> *)
 action_statement:
   | ACTION; EQ; LBRACE; v1 = instruction_list; RBRACE
-    { Action_Statement v1 }
+    { Act_Statement v1 }
   | v1 = instruction
-    { Action_Statement [ v1 ] }
+    { Act_Statement [ v1 ] }
   ;
 
 (* <instructions> *)
@@ -362,7 +378,7 @@ cell_a_register:
   | AREGISTERS; LBRACE; v1 = register_access_set_list; RBRACE
     { Cell_A_Register v1 }
   | (* empty *)
-    { No_Cell_A_Register }
+    { Cell_A_Register [] }
   ;
 
 (* <cellb0_regs> *)
@@ -370,7 +386,7 @@ cell_b0_register:
   | B0REGISTERS; LBRACE; v1 = register_access_set_list; RBRACE
     { Cell_B0_Register v1 }
   | (* empty *)
-    { No_Cell_B0_Register }
+    { Cell_B0_Register [] }
   ;
 
 (* <cellb1_regs> *)
@@ -378,7 +394,7 @@ cell_b1_register:
   | B1REGISTERS; LBRACE; v1 = register_access_set_list; RBRACE
     { Cell_B1_Register v1 }
   | (* empty *)
-    { No_Cell_B1_Register }
+    { Cell_B1_Register [] }
   ;
 
 (* <l_decls> *)
@@ -403,78 +419,32 @@ local_action:
 
 (* <cella_actions> *)
 cell_a_action:
-  | CELLA; LBRACE; v1 = layer_statement_list; RBRACE
+  | CELLA; LBRACE; v1 = layer_statement; RBRACE
     { Cell_A_Action v1 }
   | (* empty *)
-    { No_Cell_A_Action }
+    { Cell_A_Action (Layer_Statement []) }
   ;
 
 (* <cellb0_actions> *)
 cell_b0_action:
-  | CELLB0; LBRACE; v1 = layer_statement_list; RBRACE
+  | CELLB0; LBRACE; v1 = layer_statement; RBRACE
     { Cell_B0_Action v1 }
   | (* empty *)
-    { No_Cell_B0_Action }
+    { Cell_B0_Action (Layer_Statement []) }
   ;
 
 (* <cellb1_actions> *)
 cell_b1_action:
-  | CELLB1; LBRACE; v1 = layer_statement_list; RBRACE
+  | CELLB1; LBRACE; v1 = layer_statement; RBRACE
     { Cell_B1_Action v1 }
   | (* empty *)
-    { No_Cell_B1_Action }
+    { Cell_B1_Action (Layer_Statement []) }
   ;
 
-(* { <l_stmt> } *)
-layer_statement_list:
-  | v1 = layer_statement; v2 = layer_statement_list
-    { v1 :: v2 }
-  | (* empty *)
-    { [] }
-  ;
-
-(* <l_stmt> *)
+(* <l_stmts> *)
 layer_statement:
-  | v1 = layer_if_statement
-    { Layer_If v1 }
-  | BYPASS; EQ; v1 = constant; SEMICOLON
-    { Layer_Bypass v1 }
-  | NEXT_HEADER; EQ; v1 = IDENT; SEMICOLON
-    { Layer_Next_Header {| name := v1; key := intern_string v1 |} }
-  | LENGTH; EQ; v1 = expression; SEMICOLON
-    { Layer_Length v1 }
-  | v1 = action_statement
-    { Layer_As_Action v1 }
-  ;
-
-(* <if_else_l_stmt> *)
-layer_if_statement:
-  | v1 = layer_if_branch; v2 = layer_else_if_branch_list; v3 = layer_else_branch; ENDIF
-    { Layer_If_Statement (v1 :: v2) v3 }
-  ;
-
-layer_if_branch:
-  | IF; LPAREN; v1 = expression; RPAREN; v2 = layer_statement_list
-    { Layer_If_Branch v1 v2 }
-  ;
-
-layer_else_if_branch_list:
-  | v1 = layer_else_if_branch; v2 = layer_else_if_branch_list
-    { v1 :: v2 }
-  | (* empty *)
-    { [] }
-  ;
-
-layer_else_if_branch:
-  | ELSEIF; LPAREN; v1 = expression; RPAREN; v2 = layer_statement_list
-    { Layer_If_Branch v1 v2 }
-  ;
-
-layer_else_branch:
-  | ELSE; v1 = layer_statement_list;
-    { Layer_Default_Branch v1 }
-  | (* empty *)
-    { Layer_No_Default_Branch }
+  | v1 = select_statement_list
+    { Layer_Statement v1 }
   ;
 
 /// Expression Part ///
