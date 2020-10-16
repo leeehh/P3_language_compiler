@@ -8,6 +8,8 @@ Require Import Asm.
 Require Extractor.
 Require TransPin.
 Require TransCellAlpha.
+Require TransCellZero.
+Require TransCellOne.
 
 (* Require TransBase.
 Require TransA. *)
@@ -30,7 +32,15 @@ Definition trans_layer_block
     do cell_alpha_action <- Extractor.extract_cell_alpha_action local_action;
     do cell_alpha <- TransCellAlpha.translate l_index cell_alpha_action cell_alpha_register pin_info_list ps;
 
-    OK (Layer_Block layer_id pin_list cell_alpha)
+    do cell_zero_register <- Extractor.extract_cell_zero_register local_reg_decl;
+    do cell_zero_action <- Extractor.extract_cell_zero_action local_action;
+    do cell_zero <- TransCellZero.translate l_index cell_zero_action cell_zero_register pin_info_list ps;
+
+    do cell_one_register <- Extractor.extract_cell_one_register local_reg_decl;
+    do cell_one_action <- Extractor.extract_cell_one_action local_action;
+    do cell_one <- TransCellOne.translate l_index cell_one_action cell_one_register pin_info_list ps;
+
+    OK (Layer_Block layer_id pin_list cell_alpha cell_zero cell_one)
   end.
 
 Fixpoint trans_layer_block_list 

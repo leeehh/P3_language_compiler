@@ -133,3 +133,78 @@ Fixpoint protocol_expression_list_to_condition_list (id : identifier) (el : list
     do v2 <- protocol_expression_list_to_condition_list id tl fl;
     OK (v1 :: v2)
   end.
+
+Fixpoint trans_layer_ins_segment 
+  (e : expression) 
+  (pil : list pin_info) : res ins_segment := 
+  match e with
+  | Field_Expression proto field_id =>
+    match proto with
+    | Constant_Expression ce =>
+      do proto_name <- Extractor.extract_constant_id ce;
+      do proto_info <- TransUtil.find_protocol_info_in_pin_list proto_name pil;
+      do (start, length) <- TransUtil.find_field field_id (proto_field proto_info) Int.zero;
+      OK (Ins_Segment proto_name start length)
+    | _ =>
+      Error (msg "Invalid expression trans_layer_ins_segment")
+    end
+  | Bit_Expression be1 be2 =>
+    trans_layer_ins_segment be1 pil
+  | Section_Expression se1 se2 se3 =>
+    trans_layer_ins_segment se1 pil
+  | _ =>
+    Error (msg "Invalid expression trans_layer_ins_segment")
+  end.
+
+
+Definition layer_simple_expression_to_condition 
+  (e : expression)
+  (pil : list pin_info) : res condition :=
+  match e with
+  | Binary_Expression op bin_expr1 bin_expr2 =>
+    match op with
+    | Binary_EqEq =>
+      match bin_expr2 with
+      | Constant_Expression constant2 =>
+        do num <- TransUtil.to_int constant2;
+        do ins_seg <- trans_layer_ins_segment bin_expr1 pil;
+        OK (Ins_Condition ins_seg num)
+      | _ =>
+        Error (msg "Unknown bin_expr1!")
+      end
+    | _ =>
+      Error (msg "Invalid expression op!")
+    end
+  | _ =>
+    Error (msg "Invalid expression type!")
+  end.
+
+Fixpoint layer_simple_expression_to_condition_list 
+  (el : list expression)
+  (pil : list pin_info) : res (list condition) :=
+  match el with
+  | nil =>
+    OK nil
+  | hd :: tl =>
+    do v1 <- layer_simple_expression_to_condition hd pil;
+    do v2 <- layer_simple_expression_to_condition_list tl pil;
+    OK (v1 :: v2)
+  end.
+
+Definition layer_expression_to_condition_list 
+  (e : expression)
+  (pil : list pin_info) : res (list condition) :=
+  do simple_expr_list <- split_expression e;
+  layer_simple_expression_to_condition_list simple_expr_list pil.
+
+Fixpoint layer_expression_list_to_condition_list 
+  (el : list expression)
+  (pil : list pin_info) : res (list (list condition)) :=
+  match el with
+  | nil =>
+    OK nil
+  | hd :: tl =>
+    do v1 <- layer_expression_to_condition_list hd pil;
+    do v2 <- layer_expression_list_to_condition_list tl pil;
+    OK (v1 :: v2)
+  end.

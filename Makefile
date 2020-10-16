@@ -51,7 +51,7 @@ PARSERVALID= Alphabet.v Tuples.v Grammar.v Automaton.v Validator_safe.v Validato
 DRIVER=Tree.v
 
 TRANSLATOR=Asm.v AsmGen.v Extractor.v TransUtil.v TransProtoInfo.v TransLayerBlock.v TransPin.v \
-	TransLayerStatement.v TransExpression.v TransCellAlpha.v TransBranchInfo.v TransProtoStatement.v
+	TransLayerStatement.v TransExpression.v TransCellAlpha.v TransCellZero.v TransCellOne.v TransBranchInfo.v TransProtoStatement.v
 
 TYPECHECKER=Types.v Typetest.v Typing.v
 

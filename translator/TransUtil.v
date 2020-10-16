@@ -21,6 +21,17 @@ Definition to_int (c : constant) : res int :=
 
 Definition id_eq (x : identifier)(y : identifier) := peq (key x) (key y).
 
+Fixpoint find_id_in_id_list (id : identifier) (il : list identifier) :=
+  match il with
+  | nil => 
+    false
+  | hd :: tl =>
+    if id_eq id hd then
+      true
+    else
+      find_id_in_id_list id tl
+  end.
+
 Fixpoint find_protocol_info (id : identifier) (pil : list protocol_info) : res protocol_info :=
   match pil with
   | nil => Error (msg "canot be found in protocol!!")
@@ -29,6 +40,17 @@ Fixpoint find_protocol_info (id : identifier) (pil : list protocol_info) : res p
       OK hd
     else
       find_protocol_info id tl
+  end.
+
+Fixpoint find_protocol_info_in_pin_list (id : identifier) (pil : list pin_info) : res protocol_info :=
+  match pil with
+  | nil => 
+    Error (msg "cannot be found in pin_list")
+  | hd :: tl =>
+    if id_eq id (pin_name hd) then
+     OK (proto_info hd)
+    else
+      find_protocol_info_in_pin_list id tl
   end.
 
 Fixpoint find_protocol_index (id : identifier) (idl : list identifier) (index : int) : res int :=

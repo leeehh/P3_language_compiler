@@ -14,6 +14,52 @@ Local Open Scope error_monad_scope.
 
 Set Implicit Arguments.
 
+Fixpoint calculate_length (e : expression) (pil : list pin_info) : res int :=
+  match e with
+  | Length_Expression id =>
+    do proto_info <- TransUtil.find_protocol_info_in_pin_list id pil;
+    OK (proto_length proto_info)
+  | Binary_Expression bin_op bin_expr1 bin_expr2 =>
+    do len1 <- calculate_length bin_expr1 pil;
+    do len2 <- calculate_length bin_expr2 pil;
+    OK (Int.add len1 len2)
+  | Constant_Expression con =>
+    TransUtil.to_int con
+  | _ =>
+    Error (msg "invalid expression type 1!")
+  end.
+
+Definition trans_cell_alpha_pc_item
+  (b_index : int)
+  (bi : branch_info)
+  (pil : list pin_info) : res alpha_pc_item :=
+  do stmt_list <- OK (stmt bi);
+  do length_expr <- Extractor.extract_length_statement_expression stmt_list;
+  do length <- calculate_length length_expr pil;
+  OK (Alpha_Pc_Item b_index Int.one length)
+  .
+
+Fixpoint trans_cell_alpha_pc_item_list
+  (b_index : int)
+  (bil : list branch_info)
+  (pil : list pin_info) : res (list alpha_pc_item) :=
+  match bil with
+  | nil =>
+    OK nil
+  | hd :: tl =>
+    do v1 <- trans_cell_alpha_pc_item b_index hd pil;
+    do v2 <- trans_cell_alpha_pc_item_list (Int.add b_index Int.one) tl pil;
+    OK (v1 :: v2)
+  end.
+
+Definition trans_cell_alpha_pc
+  (bil : list branch_info)
+  (pil : list pin_info) : res alpha_pc :=
+  do alpha_pc_item_list <- trans_cell_alpha_pc_item_list Int.one bil pil;
+  OK (Alpha_Pc alpha_pc_item_list)
+  .
+
+
 Fixpoint trans_cell_alpha_pb_item
   (l_index : int) 
   (b_index : int) 
@@ -60,10 +106,11 @@ Definition translate
   | Cell_A_Action layer_stmt =>
     match layer_stmt with
     | Layer_Statement stmt_list =>
-      do layer_branch_info_list <- TransLayerStatement.translate stmt_list;
+      do layer_branch_info_list <- TransLayerStatement.translate stmt_list pil;
       do proto_branch_info_list <- Extractor.extract_protocol_branch_info_list pil;
       do all_branch_info_list <- TransBranchInfo.mix_branch_info (layer_branch_info_list :: proto_branch_info_list);
       do alpha_pb <- trans_cell_alpha_pb l_index all_branch_info_list pil ps;
-      OK (Cell_Alpha alpha_pb)
+      do alpha_pc <- trans_cell_alpha_pc all_branch_info_list pil;
+      OK (Cell_Alpha alpha_pb alpha_pc)
     end
   end.

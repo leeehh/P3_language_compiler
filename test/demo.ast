@@ -444,7 +444,7 @@
                       <id>(dmac - 46)
                     <const_expr>
                       <const_hex>
-                        <id>(0xFFFFFFFFFFFF - 1)
+                        <id>(0xffffffff - 1)
                   <action_stmt>
                     <action>
                       <set_instruction>

@@ -43,7 +43,7 @@ Definition trans_protocol_info (pd : protocol_declaration) : res protocol_info :
       end
     end;
 
-    OK ( {| proto_id := id; proto_length := length; proto_stmt := body |} )
+    OK ( {| proto_id := id; proto_length := length; proto_field := field_info; proto_stmt := body |} )
   end.
 
 Fixpoint trans_protocol_info_list (pdl : list protocol_declaration) : res (list protocol_info) :=

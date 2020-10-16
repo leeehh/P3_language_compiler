@@ -93,7 +93,7 @@ l2 {
     }
         
     cellB0 {
-        if (eth.dmac == 0xFFFFFFFFFFFF)
+        if (eth.dmac == 0xffffffff)
             set IRF_l2_type,3;
         elseif (eth.dmac[40] == 1)
             set IRF_l2_type, 2;

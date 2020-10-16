@@ -23,6 +23,29 @@ Definition extract_cell_alpha_register (lrd : local_register_declaration) : res 
     OK alpha_register
   end.
 
+Definition extract_cell_zero_action (la : local_action) : res cell_b0_action := 
+  match la with
+  | Local_Action alpha_action zero_action one_action => 
+    OK zero_action
+  end.
+
+Definition extract_cell_zero_register (lrd : local_register_declaration) : res cell_b0_register := 
+  match lrd with
+  | Local_Register_Declaration alpha_register zero_register one_register =>
+    OK zero_register
+  end.
+
+Definition extract_cell_one_action (la : local_action) : res cell_b1_action := 
+  match la with
+  | Local_Action alpha_action zero_action one_action => 
+    OK one_action
+  end.
+
+Definition extract_cell_one_register (lrd : local_register_declaration) : res cell_b1_register := 
+  match lrd with
+  | Local_Register_Declaration alpha_register zero_register one_register =>
+    OK one_register
+  end.
 
 (* Extractor of Type layer_action *)
 
@@ -82,4 +105,17 @@ Definition extract_constant_id (c : constant) : res identifier :=
     OK h
   | Const_Bit b =>
     OK b
+  end.
+
+Fixpoint extract_length_statement_expression (sl : list statement) : res expression :=
+  match sl with
+  | nil =>
+    Error (msg "no length statement")
+  | hd :: tl =>
+    match hd with
+    | Length_Statement e =>
+      OK e
+    | _ =>
+      extract_length_statement_expression tl
+    end
   end.

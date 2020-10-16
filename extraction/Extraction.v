@@ -37,6 +37,8 @@ Require TransProtoInfo.
 Require TransLayerBlock.
 Require TransPin.
 Require TransCellAlpha.
+Require TransCellZero.
+Require TransCellOne.
 Require TransBranchInfo.
 Require TransLayerStatement.
 Require TransProtoStatement.
@@ -114,6 +116,8 @@ Extraction Library TransProtoInfo.
 Extraction Library TransLayerBlock.
 Extraction Library TransPin.
 Extraction Library TransCellAlpha.
+Extraction Library TransCellZero.
+Extraction Library TransCellOne.
 
 Extract Constant Types.ocaml_string =>
   "(fun s -> Camlcoq.camlstring_of_coqstring s)".
